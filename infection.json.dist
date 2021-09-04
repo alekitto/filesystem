@@ -1,0 +1,18 @@
+{
+    "source": {
+        "directories": [
+            "lib"
+        ]
+    },
+    "logs": {
+        "text": "infection\/infection.log"
+    },
+    "mutators": {
+        "global-ignoreSourceCodeByRegex": [
+            "assert.*"
+        ],
+        "@default": true
+    },
+    "minMsi": 90,
+    "minCoveredMsi": 90
+}
