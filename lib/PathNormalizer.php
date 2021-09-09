@@ -32,23 +32,27 @@ class PathNormalizer
 
     private static function normalizeRelativePath(string $path): string
     {
-        $parts = [];
-        foreach (explode('/', $path) as $part) {
-            if ($part === '' || $part === '.') {
+        if (DIRECTORY_SEPARATOR !== '/') {
+            $path = str_replace('/', DIRECTORY_SEPARATOR, $path);
+        }
+
+        $newPath = [];
+        foreach (explode(DIRECTORY_SEPARATOR, $path) as $pathPart) {
+            if ($pathPart === '.' || $pathPart === '') {
                 continue;
             }
 
-            if ($part === '..') {
-                if (empty($parts)) {
+            if ($pathPart === '..') {
+                if (empty($newPath)) {
                     throw new InvalidPathException($path);
                 }
 
-                array_pop($parts);
+                array_pop($newPath);
             } else {
-                $parts[] = $part;
+                $newPath[] = $pathPart;
             }
         }
 
-        return implode(DIRECTORY_SEPARATOR, $parts);
+        return implode(DIRECTORY_SEPARATOR, $newPath);
     }
 }

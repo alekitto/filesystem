@@ -29,5 +29,5 @@ interface FilesystemReader
     /**
      * Gets the stat object of the specified file or directory.
      */
-    public function stat(string $path): FileStatInterface;
+    public function stat(string $location): FileStatInterface;
 }

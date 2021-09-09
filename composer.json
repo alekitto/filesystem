@@ -19,7 +19,8 @@
     "require-dev": {
         "phpunit/phpunit": "^9.5",
         "roave/security-advisories": "dev-master",
-        "solido/php-coding-standards": "dev-master"
+        "solido/php-coding-standards": "dev-master",
+        "phpspec/prophecy-phpunit": "^2.0"
     },
     "autoload": {
         "psr-4": {
@@ -30,6 +31,9 @@
         "psr-4": {
             "Tests\\": "tests/"
         }
+    },
+    "archive": {
+        "exclude": [ ".github", "data", "tests", "phpunit.xml", "infection.json.dist", "phpstan.neon" ]
     },
     "scripts": {
         "phpstan": "phpstan analyse lib/ -c ./phpstan.neon --level=8 --no-progress -vvv --memory-limit=2048M",

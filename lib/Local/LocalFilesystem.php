@@ -15,6 +15,8 @@ use Kcs\Filesystem\Exception\UnableToCreateDirectoryException;
 use Kcs\Filesystem\FileStatInterface;
 use Kcs\Filesystem\Filesystem;
 use Kcs\Filesystem\PathNormalizer;
+use Kcs\Filesystem\Runtime\RuntimeInterface;
+use Kcs\Filesystem\Runtime\SystemRuntime;
 use Kcs\Stream\BufferStream;
 use Kcs\Stream\ReadableStream;
 use Kcs\Stream\ResourceStream;
@@ -23,31 +25,22 @@ use RecursiveIteratorIterator;
 use SplFileInfo;
 
 use function assert;
-use function chmod;
 use function clearstatcache;
-use function copy;
 use function dirname;
-use function error_clear_last;
-use function error_get_last;
-use function fopen;
-use function is_dir;
-use function is_file;
 use function is_int;
-use function is_link;
-use function is_readable;
 use function is_string;
-use function mkdir;
-use function rename;
-use function rmdir;
+use function preg_match;
+use function preg_replace;
 use function rtrim;
 use function sprintf;
-use function unlink;
 
 use const DIRECTORY_SEPARATOR;
 
 class LocalFilesystem implements Filesystem
 {
+    private RuntimeInterface $runtime;
     private string $prefix;
+
     /**
      * @var array<string, mixed>
      * @phpstan-var array{file_permissions: int, dir_permissions: int}
@@ -58,36 +51,39 @@ class LocalFilesystem implements Filesystem
      * @param array<string, mixed> $defaultConfig
      * @phpstan-param array{file_permissions?: int, dir_permissions?: int} $defaultConfig
      */
-    public function __construct(string $location, array $defaultConfig)
+    public function __construct(string $location, array $defaultConfig = [], ?RuntimeInterface $runtime = null)
     {
-        $this->prefix = rtrim($location, DIRECTORY_SEPARATOR);
-        $this->ensureDirectoryExists($this->prefix);
+        $this->runtime = $runtime ?? new SystemRuntime();
+        $this->prefix = preg_match('#^[/]+$#', $location) ? '/' : rtrim($location, DIRECTORY_SEPARATOR);
 
         $defaultConfig['file_permissions'] ??= 0644;
         $defaultConfig['dir_permissions'] ??= 0755;
         $this->defaultConfig = $defaultConfig;
+        $this->ensureDirectoryExists($this->prefix);
     }
 
     public function exists(string $location): bool
     {
-        $location = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
+        $location = $this->prefix($location);
 
-        return is_file($location) || is_dir($location) || is_link($location);
+        return $this->runtime->isFile($location)
+            || $this->runtime->isDir($location)
+            || $this->runtime->isLink($location);
     }
 
     public function read(string $location): ReadableStream
     {
-        $path = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
-        if (! is_file($path) || ! is_readable($path)) {
+        $path = $this->prefix($location);
+        if (! $this->runtime->isFile($path) || ! $this->runtime->isReadable($path)) {
             throw new OperationException(sprintf('File "%s" does not exist or is not readable', $location));
         }
 
-        error_clear_last();
-        $handle = @fopen($path, 'rb');
+        $this->runtime->clearLastError();
+        $handle = $this->runtime->fopen($path, 'rb');
         if ($handle === false) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('File "%s" cannot be opened for read: %s', $location, $previous->getMessage()), 0, $previous);
+            throw new OperationException(sprintf('File "%s" cannot be opened for read', $location), $previous);
         }
 
         return new ResourceStream($handle);
@@ -98,14 +94,14 @@ class LocalFilesystem implements Filesystem
      */
     public function list(string $location, bool $deep = false): Collection
     {
-        $location = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
-        if (! is_dir($location)) {
-            return new ArrayCollection();
+        $path = $this->prefix($location);
+        if (! $this->runtime->isDir($path)) {
+            throw new OperationException(sprintf('Directory "%s" does not exist', $location));
         }
 
         $iterator = $deep
-            ? $this->getRecursiveDirectoryIterator($location)
-            : new DirectoryIterator($location);
+            ? $this->getRecursiveDirectoryIterator($path)
+            : new DirectoryIterator($path);
 
         return new class ($iterator) extends AbstractLazyCollection {
             /** @var iterable<SplFileInfo> */
@@ -124,16 +120,24 @@ class LocalFilesystem implements Filesystem
                 $this->collection = new ArrayCollection();
 
                 foreach ($this->iterator as $fileInfo) {
+                    if ($this->iterator instanceof DirectoryIterator && $this->iterator->isDot()) {
+                        continue;
+                    }
+
                     $this->collection[] = new LocalFileStat($fileInfo);
                 }
             }
         };
     }
 
-    public function stat(string $path): FileStatInterface
+    public function stat(string $location): FileStatInterface
     {
-        $location = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($path);
-        $fileInfo = new SplFileInfo($location);
+        if (! $this->exists($location)) {
+            throw new OperationException(sprintf('Stat failed for %s: does not exist', $location));
+        }
+
+        $path = $this->prefix($location);
+        $fileInfo = new SplFileInfo($path);
 
         return new LocalFileStat($fileInfo);
     }
@@ -145,33 +149,32 @@ class LocalFilesystem implements Filesystem
      */
     public function write(string $location, $contents, array $config = []): void
     {
-        $path = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
+        $path = $this->prefix($location);
 
-        error_clear_last();
-        $handle = @fopen($path, 'xb');
+        $this->runtime->clearLastError();
+        $handle = $this->runtime->fopen($path, 'xb');
         if ($handle === false) {
-            error_clear_last();
-            $handle = @fopen($path, 'wb');
+            $this->runtime->clearLastError();
+            $handle = $this->runtime->fopen($path, 'wb');
 
-            if (isset($config['local']['file_permissions']) && is_int($config['local']['file_permissions'])) {
-                @chmod($path, $config['local']['file_permissions']);
+            if ($handle !== false && isset($config['local']['file_permissions']) && is_int($config['local']['file_permissions'])) {
+                $this->runtime->chmod($path, $config['local']['file_permissions']);
             }
         } else {
             $permissions = $config['local']['file_permissions'] ?? $this->defaultConfig['file_permissions'];
-            @chmod($path, $permissions);
+            $this->runtime->chmod($path, $permissions);
         }
 
         if ($handle === false) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('Unable to open file "%s" for writing: %s', $location, $previous->getMessage()), 0, $previous);
+            throw new OperationException(sprintf('Unable to open file "%s" for writing', $location), $previous);
         }
 
         $stream = new ResourceStream($handle);
         if (is_string($contents)) {
             $contentStream = new BufferStream();
             $contentStream->write($contents);
-            $contentStream->rewind();
 
             $contents = $contentStream;
         }
@@ -180,50 +183,56 @@ class LocalFilesystem implements Filesystem
         while (! $contents->eof()) {
             $stream->write($contents->read(512));
         }
+
+        unset($stream);
+        $this->runtime->fclose($handle);
     }
 
     public function delete(string $location): void
     {
-        $path = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
-        if (! is_file($path) && ! is_link($path)) {
+        $path = $this->prefix($location);
+        if (! $this->runtime->isFile($path) && ! $this->runtime->isLink($path)) {
             throw new OperationException(sprintf('Cannot remove file "%s": not a file', $location));
         }
 
-        error_clear_last();
-        if (@unlink($path) === false) {
+        $this->runtime->clearLastError();
+        if ($this->runtime->unlink($path) === false) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('Cannot remove "%s": %s', $location, $previous->getMessage()), 0, $previous);
+            throw new OperationException(sprintf('Cannot remove "%s"', $location), $previous);
         }
     }
 
     public function deleteDirectory(string $location): void
     {
-        $path = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
-        if (! is_dir($path)) {
-            return;
+        $path = $this->prefix($location);
+        if (! $this->runtime->isDir($path)) {
+            throw new OperationException(sprintf('Unable to delete directory "%s": not a directory', $location));
         }
 
-        $iterator = $this->getRecursiveDirectoryIterator($location, RecursiveIteratorIterator::CHILD_FIRST);
-        error_clear_last();
+        $iterator = $this->getRecursiveDirectoryIterator($path, RecursiveIteratorIterator::CHILD_FIRST);
+        $this->runtime->clearLastError();
 
         foreach ($iterator as $file) {
             assert($file instanceof SplFileInfo);
-            $result = @unlink($file->getPathname());
+            $result = $file->isDir()
+                ? $this->runtime->rmdir($file->getPathname())
+                : $this->runtime->unlink($file->getPathname());
+
             if ($result === false) {
                 $previous = $this->exceptionFromError();
 
-                throw new OperationException(sprintf('Unable to delete directory: unable to delete file "%s": %s', $file->getPathname(), $previous->getMessage()), 0, $previous);
+                throw new OperationException(sprintf('Unable to delete directory: unable to delete file "%s"', $file->getPathname()), $previous);
             }
         }
 
         unset($iterator);
 
-        error_clear_last();
-        if (! @rmdir($location)) {
+        $this->runtime->clearLastError();
+        if (! $this->runtime->rmdir($path)) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('Unable to delete directory: "%s": %s', $location, $previous->getMessage()), 0, $previous);
+            throw new OperationException(sprintf('Unable to delete directory "%s"', $location), $previous);
         }
     }
 
@@ -233,43 +242,60 @@ class LocalFilesystem implements Filesystem
      */
     public function createDirectory(string $location, array $config = []): void
     {
-        $path = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location);
-        if (is_dir($path)) {
+        $path = $this->prefix($location);
+        if ($this->runtime->isDir($path)) {
             if (isset($config['local']['dir_permissions']) && is_int($config['local']['dir_permissions'])) {
-                @chmod($path, $config['local']['dir_permissions']);
+                $this->runtime->chmod($path, $config['local']['dir_permissions']);
             }
 
             return;
         }
 
-        error_clear_last();
-        $result = @mkdir($path, $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions'], true);
+        $this->runtime->clearLastError();
+        $result = $this->runtime->mkdir($path, $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions'], true);
 
         if ($result === false) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('Unable to create directory: %s', $previous->getMessage()), 0, $previous);
+            throw new OperationException('Unable to create directory', $previous);
         }
     }
 
     /**
      * @param array<string, mixed> $config
-     * @phpstan-param array{local?: array{dir_permissions?: int}} $config
+     * @phpstan-param array{overwrite?: bool, local?: array{dir_permissions?: int, file_permissions?: int}} $config
      */
     public function move(string $source, string $destination, array $config = []): void
     {
-        $sourcePath = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($source);
-        $destinationPath = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($destination);
+        $sourcePath = $this->prefix($source);
+        $destinationPath = $this->prefix($destination);
+        if (! $this->exists($sourcePath)) {
+            throw new OperationException('Cannot move file: source does not exist');
+        }
+
+        $overwrite = $config['overwrite'] ?? false;
+        if (! $overwrite && $this->exists($destinationPath)) {
+            throw new OperationException('Cannot move file: destination already exist and overwrite flag is not set');
+        }
+
         $this->ensureDirectoryExists(
             dirname($destinationPath),
             ['local' => ['dir_permissions' => $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions']]]
         );
 
-        if (! @rename($sourcePath, $destinationPath)) {
+        if (! $this->runtime->rename($sourcePath, $destinationPath)) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('Unable to move file: %s', $previous->getMessage()), 0, $previous);
+            throw new OperationException('Unable to move file', $previous);
         }
+
+        $key = $this->runtime->isDir($destinationPath) ? 'dir_permissions' : 'file_permissions';
+        if (! isset($config['local'][$key])) {
+            return;
+        }
+
+        /** @phpstan-ignore-next-line */
+        $this->runtime->chmod($destinationPath, $config['local'][$key]);
     }
 
     /**
@@ -278,18 +304,35 @@ class LocalFilesystem implements Filesystem
      */
     public function copy(string $source, string $destination, array $config = []): void
     {
-        $sourcePath = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($source);
-        $destinationPath = $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($destination);
+        $sourcePath = $this->prefix($source);
+        $destinationPath = $this->prefix($destination);
+        if (! $this->exists($sourcePath)) {
+            throw new OperationException('Cannot copy file: source does not exist');
+        }
+
+        $overwrite = $config['overwrite'] ?? false;
+        if (! $overwrite && $this->exists($destinationPath)) {
+            throw new OperationException('Cannot copy file: destination already exist and overwrite flag is not set');
+        }
+
         $this->ensureDirectoryExists(
             dirname($destinationPath),
             ['local' => ['dir_permissions' => $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions']]]
         );
 
-        if (! @copy($sourcePath, $destinationPath)) {
+        if (! $this->runtime->copy($sourcePath, $destinationPath)) {
             $previous = $this->exceptionFromError();
 
-            throw new OperationException(sprintf('Unable to move file: %s', $previous->getMessage()), 0, $previous);
+            throw new OperationException('Unable to copy file', $previous);
         }
+
+        $key = $this->runtime->isDir($destinationPath) ? 'dir_permissions' : 'file_permissions';
+        if (! isset($config['local'][$key])) {
+            return;
+        }
+
+        /** @phpstan-ignore-next-line */
+        $this->runtime->chmod($destinationPath, $config['local'][$key]);
     }
 
     /**
@@ -298,19 +341,19 @@ class LocalFilesystem implements Filesystem
      */
     private function ensureDirectoryExists(string $dirname, array $config = []): void
     {
-        if (is_dir($dirname)) {
+        if ($this->runtime->isDir($dirname)) {
             return;
         }
 
-        error_clear_last();
-        $result = @mkdir($dirname, $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions'], true);
+        $this->runtime->clearLastError();
+        $result = $this->runtime->mkdir($dirname, $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions'], true);
         if (! $result) {
-            $mkdirError = error_get_last();
+            $mkdirError = $this->runtime->getLastError();
         }
 
         clearstatcache(false, $dirname);
 
-        if (! is_dir($dirname)) {
+        if (! $this->runtime->isDir($dirname)) {
             $previous = $this->exceptionFromError($mkdirError ?? null);
 
             throw new UnableToCreateDirectoryException($dirname, $previous);
@@ -322,7 +365,7 @@ class LocalFilesystem implements Filesystem
      */
     private function exceptionFromError(?array $error = null): ErrorException
     {
-        $error ??= error_get_last();
+        $error ??= $this->runtime->getLastError();
 
         return new ErrorException(
             $error['message'] ?? '',
@@ -336,5 +379,13 @@ class LocalFilesystem implements Filesystem
     private function getRecursiveDirectoryIterator(string $location, int $mode = RecursiveIteratorIterator::SELF_FIRST): RecursiveIteratorIterator
     {
         return new RecursiveIteratorIterator(new RecursiveDirectoryIterator($location, FilesystemIterator::SKIP_DOTS), $mode);
+    }
+
+    private function prefix(string $location): string
+    {
+        $location = preg_replace('#[' . DIRECTORY_SEPARATOR . ']+#', DIRECTORY_SEPARATOR, $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location));
+        assert(is_string($location));
+
+        return $location !== '/' ? rtrim($location, '/') : $location;
     }
 }

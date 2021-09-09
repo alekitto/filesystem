@@ -5,6 +5,7 @@
         ]
     },
     "logs": {
+        "debug": "infection\/debug.log",
         "text": "infection\/infection.log"
     },
     "mutators": {

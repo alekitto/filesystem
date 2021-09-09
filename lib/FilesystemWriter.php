@@ -37,6 +37,7 @@ interface FilesystemWriter
      * Move a file (moves in the same filesystem).
      *
      * @param array<string, mixed> $config
+     * @phpstan-param array{overwrite?: bool, local?: array{dir_permissions?: int, file_permissions?: int}} $config
      */
     public function move(string $source, string $destination, array $config = []): void;
 
@@ -44,6 +45,7 @@ interface FilesystemWriter
      * Copy a file (copy into the same filesystem).
      *
      * @param array<string, mixed> $config
+     * @phpstan-param array{overwrite?: bool, local?: array{dir_permissions?: int, file_permissions?: int}} $config
      */
     public function copy(string $source, string $destination, array $config = []): void;
 }
