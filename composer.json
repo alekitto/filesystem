@@ -13,14 +13,17 @@
     "require": {
         "php": "^7.4 || ^8.0",
         "doctrine/collections": "^1.0 || ^2.0",
-        "kcs/stream": "^0.1.0",
+        "kcs/stream": "dev-main",
         "symfony/mime": "^4.4 || ^5.0 || ^6.0"
     },
     "require-dev": {
+        "async-aws/simple-s3": "^1.0",
+        "phpspec/prophecy-phpunit": "^2.0",
         "phpunit/phpunit": "^9.5",
         "roave/security-advisories": "dev-master",
         "solido/php-coding-standards": "dev-master",
-        "phpspec/prophecy-phpunit": "^2.0"
+        "symfony/process": "*",
+        "symfony/var-dumper": "^4.4 || ^5.0"
     },
     "autoload": {
         "psr-4": {
@@ -39,5 +42,8 @@
         "phpstan": "phpstan analyse lib/ -c ./phpstan.neon --level=8 --no-progress -vvv --memory-limit=2048M",
         "cscheck": "vendor/bin/phpcs --standard=Solido lib/",
         "csfix": "vendor/bin/phpcbf --standard=Solido lib/"
+    },
+    "config": {
+        "sort-packages": true
     }
 }

@@ -300,7 +300,7 @@ class LocalFilesystem implements Filesystem
 
     /**
      * @param array<string, mixed> $config
-     * @phpstan-param array{local?: array{dir_permissions?: int}} $config
+     * @phpstan-param array{local?: array{dir_permissions?: int}, overwrite?: bool} $config
      */
     public function copy(string $source, string $destination, array $config = []): void
     {

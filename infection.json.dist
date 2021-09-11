@@ -8,11 +8,22 @@
         "debug": "infection\/debug.log",
         "text": "infection\/infection.log"
     },
+    "timeout": 30,
     "mutators": {
         "global-ignoreSourceCodeByRegex": [
             "assert.*"
         ],
-        "@default": true
+        "@default": true,
+        "IncrementInteger": {
+            "ignoreSourceCodeByRegex": [
+                ".*new.*Exception.*"
+            ]
+        },
+        "DecrementInteger": {
+            "ignoreSourceCodeByRegex": [
+                ".*new.*Exception.*"
+            ]
+        }
     },
     "minMsi": 90,
     "minCoveredMsi": 90
