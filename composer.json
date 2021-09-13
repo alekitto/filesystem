@@ -13,7 +13,7 @@
     "require": {
         "php": "^7.4 || ^8.0",
         "doctrine/collections": "^1.0 || ^2.0",
-        "kcs/stream": "dev-main",
+        "kcs/stream": "^0.1.1",
         "symfony/mime": "^4.4 || ^5.0 || ^6.0"
     },
     "require-dev": {
