@@ -121,7 +121,7 @@ class AsyncS3FilesystemIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->fs = new AsyncS3Filesystem(self::$s3Bucket, self::$client);
+        $this->fs = new AsyncS3Filesystem(self::$s3Bucket, '/', self::$client);
     }
 
     public function testExistsShouldReturnFalseIfFileDoesExists(): void

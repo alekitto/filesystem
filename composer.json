@@ -17,12 +17,16 @@
         "symfony/mime": "^4.4 || ^5.0 || ^6.0"
     },
     "require-dev": {
+        "async-aws/s3": "^1.0",
         "async-aws/simple-s3": "^1.0",
         "phpspec/prophecy-phpunit": "^2.0",
         "phpunit/phpunit": "^9.5",
         "roave/security-advisories": "dev-master",
         "solido/php-coding-standards": "dev-master",
-        "symfony/process": "*",
+        "symfony/config": "^4.4 || ^5.0",
+        "symfony/dependency-injection": "^4.4 || ^5.0",
+        "symfony/http-kernel": "^4.4 || ^5.0",
+        "symfony/process": "^4.4 || ^5.0",
         "symfony/var-dumper": "^4.4 || ^5.0"
     },
     "autoload": {

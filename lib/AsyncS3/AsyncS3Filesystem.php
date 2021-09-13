@@ -21,6 +21,7 @@ use Kcs\Filesystem\Exception\OperationException;
 use Kcs\Filesystem\FileStatInterface;
 use Kcs\Filesystem\Filesystem;
 use Kcs\Filesystem\IterableIterator;
+use Kcs\Filesystem\PathNormalizer;
 use Kcs\Stream\BufferStream;
 use Kcs\Stream\PumpStream;
 use Kcs\Stream\ReadableStream;
@@ -30,6 +31,7 @@ use function assert;
 use function base64_encode;
 use function hash;
 use function is_string;
+use function preg_replace;
 use function rawurlencode;
 use function rtrim;
 use function str_ends_with;
@@ -40,11 +42,13 @@ use const PHP_INT_MAX;
 class AsyncS3Filesystem implements Filesystem
 {
     private string $bucket;
+    private string $prefix;
     private S3Client $client;
 
-    public function __construct(string $bucket, ?S3Client $client = null)
+    public function __construct(string $bucket, string $prefix = '/', ?S3Client $client = null)
     {
         $this->bucket = $bucket;
+        $this->prefix = $prefix;
         $this->client = $client ?? new S3Client();
     }
 
@@ -52,7 +56,7 @@ class AsyncS3Filesystem implements Filesystem
     {
         return $this->client->objectExists([
             'Bucket' => $this->bucket,
-            'Key' => $location,
+            'Key' => $this->prefix($location),
         ])->isSuccess();
     }
 
@@ -64,7 +68,7 @@ class AsyncS3Filesystem implements Filesystem
 
         $result = $this->client->GetObject([
             'Bucket' => $this->bucket,
-            'Key' => $location,
+            'Key' => $this->prefix($location),
         ]);
 
         try {
@@ -94,7 +98,7 @@ class AsyncS3Filesystem implements Filesystem
      */
     public function list(string $location, bool $deep = false): Collection
     {
-        $options = ['Bucket' => $this->bucket, 'Prefix' => $location];
+        $options = ['Bucket' => $this->bucket, 'Prefix' => $this->prefix($location)];
         if ($deep === false) {
             $options['Delimiter'] = '/';
         }
@@ -129,11 +133,12 @@ class AsyncS3Filesystem implements Filesystem
 
     public function stat(string $location): FileStatInterface
     {
+        $path = $this->prefix($location);
         try {
             return new S3FileStat($this->client->headObject([
                 'Bucket' => $this->bucket,
-                'Key' => $location,
-            ]), $location);
+                'Key' => $path,
+            ]), $path);
         } catch (NoSuchKeyException $e) {
             throw new OperationException('File does not exists', $e);
         } catch (ClientException | ServerException $e) {
@@ -158,6 +163,7 @@ class AsyncS3Filesystem implements Filesystem
         }
 
         $options = [];
+        $prefixed = $this->prefix($location);
         $streamLength = $contents->length();
         if ($streamLength !== null) {
             $options['ContentLength'] = $streamLength;
@@ -187,7 +193,7 @@ class AsyncS3Filesystem implements Filesystem
             $hash = base64_encode(hash('md5', $body, true));
             $this->client->putObject([
                 'Bucket' => $this->bucket,
-                'Key' => $location,
+                'Key' => $prefixed,
                 'Body' => $body,
                 'ContentLength' => strlen($body),
                 'ContentMD5' => $hash,
@@ -195,7 +201,7 @@ class AsyncS3Filesystem implements Filesystem
         } else {
             $uploadId = $this->client->createMultipartUpload([
                 'Bucket' => $this->bucket,
-                'Key' => $location,
+                'Key' => $prefixed,
             ] + $options)->getUploadId();
             assert(is_string($uploadId));
 
@@ -208,7 +214,7 @@ class AsyncS3Filesystem implements Filesystem
 
                     $response = $this->client->uploadPart([
                         'Bucket' => $this->bucket,
-                        'Key' => $location,
+                        'Key' => $prefixed,
                         'UploadId' => $uploadId,
                         'PartNumber' => $partNumber,
                         'ContentLength' => strlen($body),
@@ -222,14 +228,14 @@ class AsyncS3Filesystem implements Filesystem
                     ]);
                 }
             } catch (Throwable $e) {
-                $this->client->abortMultipartUpload(['Bucket' => $this->bucket, 'Key' => $location, 'UploadId' => $uploadId]);
+                $this->client->abortMultipartUpload(['Bucket' => $this->bucket, 'Key' => $prefixed, 'UploadId' => $uploadId]);
 
                 throw new OperationException('Failed to upload file', $e);
             }
 
             $this->client->completeMultipartUpload([
                 'Bucket' => $this->bucket,
-                'Key' => $location,
+                'Key' => $prefixed,
                 'UploadId' => $uploadId,
                 'MultipartUpload' => new CompletedMultipartUpload(['Parts' => $parts]),
             ]);
@@ -240,14 +246,14 @@ class AsyncS3Filesystem implements Filesystem
     {
         $this->client->deleteObject([
             'Bucket' => $this->bucket,
-            'Key' => $location,
+            'Key' => $this->prefix($location),
         ]);
     }
 
     public function deleteDirectory(string $location): void
     {
         $objects = [];
-        $result = $this->client->listObjectsV2(['Bucket' => $this->bucket, 'Prefix' => $location]);
+        $result = $this->client->listObjectsV2(['Bucket' => $this->bucket, 'Prefix' => $this->prefix($location)]);
 
         foreach ($result->getContents() as $item) {
             $key = $item->getKey();
@@ -273,7 +279,7 @@ class AsyncS3Filesystem implements Filesystem
      */
     public function createDirectory(string $location, array $config = []): void
     {
-        $this->write(rtrim($location, '/') . '/', '', $config);
+        $this->write(rtrim($this->prefix($location), '/') . '/', '', $config);
     }
 
     /**
@@ -290,20 +296,20 @@ class AsyncS3Filesystem implements Filesystem
      */
     public function copy(string $source, string $destination, array $config = []): void
     {
-        $sourcePath = $this->bucket . '/' . $source;
-        $destinationPath = $destination;
-        if (! $this->exists($sourcePath)) {
+        if (! $this->exists($source)) {
             throw new OperationException('Cannot move file: source does not exist');
         }
 
+        $sourcePath = $this->bucket . '/' . $this->prefix($source);
         $overwrite = $config['overwrite'] ?? false;
-        if (! $overwrite && $this->exists($destinationPath)) {
+        if (! $overwrite && $this->exists($destination)) {
             throw new OperationException('Cannot move file: destination already exist and overwrite flag is not set');
         }
 
+        $destinationPath = $this->prefix($destination);
         $options = [
             'Bucket' => $this->bucket,
-            'Key' => $destination,
+            'Key' => $destinationPath,
             'CopySource' => rawurlencode($sourcePath),
         ];
 
@@ -312,5 +318,13 @@ class AsyncS3Filesystem implements Filesystem
         }
 
         $this->client->copyObject($options);
+    }
+
+    private function prefix(string $location): string
+    {
+        $location = preg_replace('#[/]+#', '/', $this->prefix . '/' . PathNormalizer::normalizePath($location));
+        assert(is_string($location));
+
+        return $location !== '/' ? rtrim($location, '/') : $location;
     }
 }
