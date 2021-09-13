@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Kcs\Filesystem\AsyncS3;
 
+use AsyncAws\Core\Exception\Http\ClientException;
+use AsyncAws\Core\Exception\Http\ServerException;
+use AsyncAws\S3\Exception\InvalidObjectStateException;
 use AsyncAws\S3\Exception\NoSuchKeyException;
 use AsyncAws\S3\S3Client;
 use AsyncAws\S3\ValueObject\AwsObject;
@@ -29,6 +32,7 @@ use function hash;
 use function is_string;
 use function rawurlencode;
 use function rtrim;
+use function str_ends_with;
 use function strlen;
 
 use const PHP_INT_MAX;
@@ -54,6 +58,10 @@ class AsyncS3Filesystem implements Filesystem
 
     public function read(string $location): ReadableStream
     {
+        if (str_ends_with($location, '/')) {
+            throw new OperationException('Cannot read a directory');
+        }
+
         $result = $this->client->GetObject([
             'Bucket' => $this->bucket,
             'Key' => $location,
@@ -63,6 +71,10 @@ class AsyncS3Filesystem implements Filesystem
             $chunks = new IterableIterator($result->getBody()->getChunks());
         } catch (NoSuchKeyException $e) {
             throw new OperationException('File does not exists', $e);
+        } catch (InvalidObjectStateException $e) {
+            throw new OperationException('File cannot be read', $e);
+        } catch (ClientException | ServerException $e) {
+            throw new OperationException('Error while reading file', $e);
         }
 
         return new PumpStream(static function () use ($chunks) {
@@ -117,7 +129,20 @@ class AsyncS3Filesystem implements Filesystem
 
     public function stat(string $location): FileStatInterface
     {
-        return new S3FileStat($this->client->headObject($location), $location);
+        try {
+            return new S3FileStat($this->client->headObject([
+                'Bucket' => $this->bucket,
+                'Key' => $location,
+            ]), $location);
+        } catch (NoSuchKeyException $e) {
+            throw new OperationException('File does not exists', $e);
+        } catch (ClientException | ServerException $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                throw new OperationException('File does not exists', $e);
+            }
+
+            throw new OperationException('Error while requesting file details', $e);
+        }
     }
 
     /**
@@ -157,7 +182,7 @@ class AsyncS3Filesystem implements Filesystem
             }
         }
 
-        if ($streamLength !== null && $streamLength < 5 * 1024 * 1024) {
+        if ($streamLength !== null && $streamLength <= 5 * 1024 * 1024) {
             $body = $contents->read(PHP_INT_MAX);
             $hash = base64_encode(hash('md5', $body, true));
             $this->client->putObject([
@@ -199,7 +224,7 @@ class AsyncS3Filesystem implements Filesystem
             } catch (Throwable $e) {
                 $this->client->abortMultipartUpload(['Bucket' => $this->bucket, 'Key' => $location, 'UploadId' => $uploadId]);
 
-                throw $e;
+                throw new OperationException('Failed to upload file', $e);
             }
 
             $this->client->completeMultipartUpload([
@@ -265,10 +290,21 @@ class AsyncS3Filesystem implements Filesystem
      */
     public function copy(string $source, string $destination, array $config = []): void
     {
+        $sourcePath = $this->bucket . '/' . $source;
+        $destinationPath = $destination;
+        if (! $this->exists($sourcePath)) {
+            throw new OperationException('Cannot move file: source does not exist');
+        }
+
+        $overwrite = $config['overwrite'] ?? false;
+        if (! $overwrite && $this->exists($destinationPath)) {
+            throw new OperationException('Cannot move file: destination already exist and overwrite flag is not set');
+        }
+
         $options = [
             'Bucket' => $this->bucket,
             'Key' => $destination,
-            'CopySource' => rawurlencode($this->bucket . '/' . $source),
+            'CopySource' => rawurlencode($sourcePath),
         ];
 
         if (isset($config['s3']['acl'])) {
