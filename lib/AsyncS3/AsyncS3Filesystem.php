@@ -169,6 +169,10 @@ class AsyncS3Filesystem implements Filesystem
             $options['ContentLength'] = $streamLength;
         }
 
+        if (isset($config['content-type']) || isset($config['s3']['content-type'])) {
+            $options['ContentType'] = $config['content-type'] ?? $config['s3']['content-type'] ?? 'application/octet-stream';
+        }
+
         if (isset($config['s3'])) {
             $s3Config = $config['s3'];
             if (isset($s3Config['acl'])) {
@@ -177,10 +181,6 @@ class AsyncS3Filesystem implements Filesystem
 
             if (isset($s3Config['cache-control'])) {
                 $options['CacheControl'] = $s3Config['cache-control'];
-            }
-
-            if (isset($s3Config['content-type'])) {
-                $options['ContentType'] = $s3Config['content-type'];
             }
 
             if (isset($s3Config['metadata'])) {
