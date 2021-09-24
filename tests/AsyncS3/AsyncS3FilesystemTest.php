@@ -9,7 +9,6 @@ use AsyncAws\Core\Exception\Http\ClientException;
 use AsyncAws\Core\Response;
 use AsyncAws\S3\Exception\InvalidObjectStateException;
 use AsyncAws\S3\Exception\NoSuchKeyException;
-use AsyncAws\S3\Result\AbortMultipartUploadOutput;
 use AsyncAws\S3\Result\CreateMultipartUploadOutput;
 use AsyncAws\S3\Result\GetObjectOutput;
 use AsyncAws\S3\Result\HeadObjectOutput;
@@ -53,7 +52,7 @@ class AsyncS3FilesystemTest extends TestCase
 
         $this->client->objectExists([
             'Bucket' => 'bucket',
-            'Key' => '/existent.txt'
+            'Key' => 'existent.txt'
         ])->willReturn($success);
 
         $response = $this->prophesize(ResponseInterface::class);
@@ -67,7 +66,7 @@ class AsyncS3FilesystemTest extends TestCase
 
         $this->client->objectExists([
             'Bucket' => 'bucket',
-            'Key' => '/non-existent.txt'
+            'Key' => 'non-existent.txt'
         ])->willReturn($failure);
 
         self::assertTrue($this->fs->exists('existent.txt'));
@@ -109,7 +108,7 @@ XML;
 
         $this->client->getObject([
             'Bucket' => 'bucket',
-            'Key' => '/this-file'
+            'Key' => 'this-file'
         ])->willReturn(new GetObjectOutput($awsResponse));
 
         $this->expectException(OperationException::class);
@@ -144,7 +143,7 @@ XML;
 
         $this->client->getObject([
             'Bucket' => 'bucket',
-            'Key' => '/this-file'
+            'Key' => 'this-file'
         ])->willReturn(new GetObjectOutput($awsResponse));
 
         $this->expectException(OperationException::class);
@@ -163,7 +162,7 @@ XML;
 
         $this->client->getObject([
             'Bucket' => 'bucket',
-            'Key' => '/this-file'
+            'Key' => 'this-file'
         ])->willReturn(new GetObjectOutput($awsResponse));
 
         $this->expectException(OperationException::class);
@@ -184,7 +183,7 @@ XML;
 
         $this->client->listObjectsV2([
             'Bucket' => 'bucket',
-            'Prefix' => '/',
+            'Prefix' => '',
             'Delimiter' => '/'
         ])
             ->shouldBeCalled()
@@ -206,7 +205,7 @@ XML;
 
         $this->client->listObjectsV2([
             'Bucket' => 'bucket',
-            'Prefix' => '/',
+            'Prefix' => '',
         ])
             ->shouldBeCalled()
             ->willReturn($output);
@@ -241,7 +240,7 @@ XML;
 
         $this->client->headObject([
             'Bucket' => 'bucket',
-            'Key' => '/this-file'
+            'Key' => 'this-file'
         ])->willReturn(new HeadObjectOutput($awsResponse));
 
         $this->expectException(OperationException::class);
@@ -260,7 +259,7 @@ XML;
 
         $this->client->headObject([
             'Bucket' => 'bucket',
-            'Key' => '/this-file'
+            'Key' => 'this-file'
         ])->willReturn(new HeadObjectOutput($awsResponse));
 
         $this->expectException(OperationException::class);
@@ -273,7 +272,7 @@ XML;
         $contents = str_repeat('a', 5 * 1024 * 1024);
         $this->client->putObject([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'Body' => $contents,
             'ContentLength' => 5 * 1024 * 1024,
             'ContentMD5' => base64_encode(hash('md5', $contents, true)),
@@ -303,7 +302,7 @@ XML;
         $contents = str_repeat('a', 5 * 1024 * 1024 + 1);
         $this->client->createMultipartUpload([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'ContentLength' => 5 * 1024 * 1024 + 1,
             'ACL' => 'public-read',
             'CacheControl' => 'public, max-age=604800, immutable',
@@ -319,7 +318,7 @@ XML;
         $part = str_repeat('a', 5 * 1024 * 1024);
         $this->client->uploadPart([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'UploadId' => 'upload-id',
             'PartNumber' => 1,
             'ContentLength' => 5 * 1024 * 1024,
@@ -332,7 +331,7 @@ XML;
 
         $this->client->uploadPart([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'UploadId' => 'upload-id',
             'PartNumber' => 2,
             'ContentLength' => 1,
@@ -345,7 +344,7 @@ XML;
 
         $this->client->completeMultipartUpload([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'UploadId' => 'upload-id',
             'MultipartUpload' => new CompletedMultipartUpload(['Parts' => [
                 new CompletedPart([
@@ -377,7 +376,7 @@ XML;
         $contents = str_repeat('a', 5 * 1024 * 1024 + 1);
         $this->client->createMultipartUpload([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'ContentLength' => 5 * 1024 * 1024 + 1,
             'ACL' => 'public-read',
             'CacheControl' => 'public, max-age=604800, immutable',
@@ -393,7 +392,7 @@ XML;
         $part = str_repeat('a', 5 * 1024 * 1024);
         $this->client->uploadPart([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'UploadId' => 'upload-id',
             'PartNumber' => 1,
             'ContentLength' => 5 * 1024 * 1024,
@@ -405,7 +404,7 @@ XML;
 
         $this->client->abortMultipartUpload([
             'Bucket' => 'bucket',
-            'Key' => '/test.txt',
+            'Key' => 'test.txt',
             'UploadId' => 'upload-id',
         ])
             ->shouldBeCalled();

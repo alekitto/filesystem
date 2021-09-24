@@ -325,6 +325,6 @@ class AsyncS3Filesystem implements Filesystem
         $location = preg_replace('#[/]+#', '/', $this->prefix . '/' . PathNormalizer::normalizePath($location));
         assert(is_string($location));
 
-        return $location !== '/' ? rtrim($location, '/') : $location;
+        return call_user_func($location !== '/' ? 'trim' : 'ltrim', $location, '/');
     }
 }
