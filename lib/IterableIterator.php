@@ -33,7 +33,7 @@ class IterableIterator implements Iterator
     }
 
     /**
-     * @return bool|float|int|string|null
+     * @return mixed
      */
     public function key()
     {

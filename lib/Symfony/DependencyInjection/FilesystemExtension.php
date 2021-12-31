@@ -9,12 +9,16 @@ use Kcs\Filesystem\AsyncS3\AsyncS3Filesystem;
 use Kcs\Filesystem\Filesystem;
 use Kcs\Filesystem\Local\LocalFilesystem;
 use RuntimeException;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Reference;
 
+use function assert;
 use function class_exists;
+use function is_array;
+use function is_string;
 
 class FilesystemExtension extends Extension
 {
@@ -28,6 +32,8 @@ class FilesystemExtension extends Extension
 
         foreach ($config['storages'] as $name => $storageConfig) {
             $options = $container->resolveEnvPlaceholders($storageConfig['options']);
+            assert(is_array($options));
+
             $adapter = $this->createDefinition($storageConfig['type'], $options);
             if ($adapter !== null) {
                 $container->setDefinition('kcs_filesystem.filesystem.' . $name, $adapter)->setPublic(false);
@@ -51,6 +57,10 @@ class FilesystemExtension extends Extension
                 }
 
                 if (isset($options['client'])) {
+                    if (! is_string($options['client'])) {
+                        throw new InvalidConfigurationException('S3 client must be a string service name in filesystem configuration.');
+                    }
+
                     $client = new Reference($options['client']);
                 } elseif (isset($options['access_key']) || isset($options['secret_key']) || isset($options['region'])) {
                     $configuration = [];

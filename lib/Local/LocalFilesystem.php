@@ -30,6 +30,7 @@ use function dirname;
 use function is_int;
 use function is_string;
 use function preg_match;
+use function preg_quote;
 use function preg_replace;
 use function rtrim;
 use function sprintf;
@@ -103,7 +104,7 @@ class LocalFilesystem implements Filesystem
             ? $this->getRecursiveDirectoryIterator($path)
             : new DirectoryIterator($path);
 
-        return new class ($iterator, $this->prefix) extends AbstractLazyCollection {
+        return new class ($iterator, $this->prefix ?? '') extends AbstractLazyCollection {
             /** @var iterable<SplFileInfo> */
             private iterable $iterator;
             private string $prefixPattern;
@@ -128,6 +129,7 @@ class LocalFilesystem implements Filesystem
 
                     $currentPath = (string) $fileInfo->getRealPath();
                     $currentPath = preg_replace($this->prefixPattern, '', $currentPath);
+                    assert($currentPath !== null);
 
                     $this->collection[] = new LocalFileStat($fileInfo, $currentPath);
                 }
@@ -367,6 +369,7 @@ class LocalFilesystem implements Filesystem
 
     /**
      * @param array<string, mixed> $error
+     * @phpstan-param array{message?: string, type?: int, file?: string, line?: int} $error
      */
     private function exceptionFromError(?array $error = null): ErrorException
     {

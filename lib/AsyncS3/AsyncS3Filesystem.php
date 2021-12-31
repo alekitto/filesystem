@@ -31,11 +31,14 @@ use function assert;
 use function base64_encode;
 use function hash;
 use function is_string;
+use function ltrim;
+use function preg_quote;
 use function preg_replace;
 use function rawurlencode;
 use function rtrim;
 use function str_ends_with;
 use function strlen;
+use function trim;
 
 use const PHP_INT_MAX;
 
@@ -105,7 +108,7 @@ class AsyncS3Filesystem implements Filesystem
 
         $iterator = $this->client->listObjectsV2($options);
 
-        return new class ($iterator, $this->prefix) extends AbstractLazyCollection {
+        return new class ($iterator, $this->prefix ?? '') extends AbstractLazyCollection {
             /** @var iterable<AwsObject|CommonPrefix> */
             private iterable $iterator;
             private string $prefixPattern;
@@ -128,6 +131,8 @@ class AsyncS3Filesystem implements Filesystem
                     assert($key !== null);
 
                     $relativeKey = preg_replace($this->prefixPattern, '', $key);
+                    assert($relativeKey !== null);
+
                     $this->collection[] = new S3FileStat($item, $key, $relativeKey);
                 }
             }
@@ -154,7 +159,9 @@ class AsyncS3Filesystem implements Filesystem
     }
 
     /**
-     * @inheritDoc
+     * {@inheritdoc}
+     *
+     * @phpstan-param array{content-type?:string, s3?: array{content-type?: string, acl?: string, cache-control?: string, metadata?: string}} $config
      */
     public function write(string $location, $contents, array $config = []): void
     {
@@ -278,7 +285,9 @@ class AsyncS3Filesystem implements Filesystem
     }
 
     /**
-     * @inheritDoc
+     * {@inheritdoc}
+     *
+     * @phpstan-param array{s3?: array{acl?: string, metadata?: string}} $config
      */
     public function createDirectory(string $location, array $config = []): void
     {
@@ -295,7 +304,9 @@ class AsyncS3Filesystem implements Filesystem
     }
 
     /**
-     * @inheritDoc
+     * {@inheritdoc}
+     *
+     * @phpstan-param array{overwrite?: bool, s3?: array{acl?: string}} $config
      */
     public function copy(string $source, string $destination, array $config = []): void
     {
@@ -328,6 +339,10 @@ class AsyncS3Filesystem implements Filesystem
         $location = preg_replace('#[/]+#', '/', $this->prefix . '/' . PathNormalizer::normalizePath($location));
         assert(is_string($location));
 
-        return call_user_func($location !== '/' ? 'trim' : 'ltrim', $location, '/');
+        if ($location !== '/') {
+            return trim($location, '/');
+        }
+
+        return ltrim($location, '/');
     }
 }

@@ -40,6 +40,7 @@ interface RuntimeInterface
 
     /**
      * @return array<string, mixed>|null
+     * @phpstan-return array{message?: string, type?: int, file?: string, line?: int}
      */
     public function getLastError(): ?array;
 }
