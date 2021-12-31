@@ -105,16 +105,18 @@ class AsyncS3Filesystem implements Filesystem
 
         $iterator = $this->client->listObjectsV2($options);
 
-        return new class ($iterator) extends AbstractLazyCollection {
+        return new class ($iterator, $this->prefix) extends AbstractLazyCollection {
             /** @var iterable<AwsObject|CommonPrefix> */
             private iterable $iterator;
+            private string $prefixPattern;
 
             /**
              * @param iterable<AwsObject|CommonPrefix> $iterator
              */
-            public function __construct(iterable $iterator)
+            public function __construct(iterable $iterator, string $prefix)
             {
                 $this->iterator = $iterator;
+                $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
             }
 
             protected function doInitialize(): void
@@ -125,7 +127,8 @@ class AsyncS3Filesystem implements Filesystem
                     $key = $item instanceof AwsObject ? $item->getKey() : $item->getPrefix();
                     assert($key !== null);
 
-                    $this->collection[] = new S3FileStat($item, $key);
+                    $relativeKey = preg_replace($this->prefixPattern, '', $key);
+                    $this->collection[] = new S3FileStat($item, $key, $relativeKey);
                 }
             }
         };
@@ -138,7 +141,7 @@ class AsyncS3Filesystem implements Filesystem
             return new S3FileStat($this->client->headObject([
                 'Bucket' => $this->bucket,
                 'Key' => $path,
-            ]), $path);
+            ]), $path, PathNormalizer::normalizePath($location));
         } catch (NoSuchKeyException $e) {
             throw new OperationException('File does not exists', $e);
         } catch (ClientException | ServerException $e) {

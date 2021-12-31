@@ -19,12 +19,19 @@ class LocalFileStat implements FileStatInterface
     private SplFileInfo $fileInfo;
     private DateTimeImmutable $lastModified;
     private int $fileSize;
+    private string $relativePath;
 
-    public function __construct(SplFileInfo $fileInfo)
+    public function __construct(SplFileInfo $fileInfo, string $relativePath)
     {
         $this->fileInfo = $fileInfo;
         $this->lastModified = new DateTimeImmutable('@' . $fileInfo->getMTime());
         $this->fileSize = $fileInfo->isDir() ? -1 : $fileInfo->getSize();
+        $this->relativePath = $relativePath;
+    }
+
+    public function path(): string
+    {
+        return $this->relativePath;
     }
 
     public function lastModified(): DateTimeInterface

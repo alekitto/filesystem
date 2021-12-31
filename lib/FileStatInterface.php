@@ -9,6 +9,11 @@ use DateTimeInterface;
 interface FileStatInterface
 {
     /**
+     * Gets the file path (called "prefix" on some fs).
+     */
+    public function path(): string;
+
+    /**
      * Gets the "last modified" date time.
      */
     public function lastModified(): DateTimeInterface;

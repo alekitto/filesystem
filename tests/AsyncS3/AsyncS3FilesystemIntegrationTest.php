@@ -70,7 +70,7 @@ class AsyncS3FilesystemIntegrationTest extends TestCase
                 self::markTestSkipped('Cannot start minio server');
             }
 
-            register_shutdown_function(function () {
+            register_shutdown_function(static function () {
                 self::$minio->stop();
             });
 

@@ -22,14 +22,16 @@ class S3FileStat implements FileStatInterface
     private int $fileSize;
     private ?string $mimeType = null;
     private string $key;
+    private string $relativeKey;
 
     /**
      * @param AwsObject | CommonPrefix | HeadObjectOutput $object
      */
-    public function __construct($object, string $key)
+    public function __construct($object, string $key, string $relativeKey)
     {
         $this->object = $object;
         $this->key = $key;
+        $this->relativeKey = $relativeKey;
         if ($object instanceof AwsObject) {
             $this->lastModified = $object->getLastModified() ?? new DateTimeImmutable('@0');
             $this->fileSize = (int) $object->getSize();
@@ -42,6 +44,11 @@ class S3FileStat implements FileStatInterface
             $this->fileSize = -1;
             $this->mimeType = 'application/x-directory';
         }
+    }
+
+    public function path(): string
+    {
+        return $this->relativeKey;
     }
 
     public function lastModified(): DateTimeInterface

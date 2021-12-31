@@ -103,16 +103,18 @@ class LocalFilesystem implements Filesystem
             ? $this->getRecursiveDirectoryIterator($path)
             : new DirectoryIterator($path);
 
-        return new class ($iterator) extends AbstractLazyCollection {
+        return new class ($iterator, $this->prefix) extends AbstractLazyCollection {
             /** @var iterable<SplFileInfo> */
             private iterable $iterator;
+            private string $prefixPattern;
 
             /**
              * @param iterable<SplFileInfo> $iterator
              */
-            public function __construct(iterable $iterator)
+            public function __construct(iterable $iterator, string $prefix)
             {
                 $this->iterator = $iterator;
+                $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
             }
 
             protected function doInitialize(): void
@@ -124,7 +126,10 @@ class LocalFilesystem implements Filesystem
                         continue;
                     }
 
-                    $this->collection[] = new LocalFileStat($fileInfo);
+                    $currentPath = (string) $fileInfo->getRealPath();
+                    $currentPath = preg_replace($this->prefixPattern, '', $currentPath);
+
+                    $this->collection[] = new LocalFileStat($fileInfo, $currentPath);
                 }
             }
         };
@@ -139,7 +144,7 @@ class LocalFilesystem implements Filesystem
         $path = $this->prefix($location);
         $fileInfo = new SplFileInfo($path);
 
-        return new LocalFileStat($fileInfo);
+        return new LocalFileStat($fileInfo, PathNormalizer::normalizePath($location));
     }
 
     /**
