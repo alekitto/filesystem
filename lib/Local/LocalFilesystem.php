@@ -131,6 +131,7 @@ class LocalFilesystem implements Filesystem
                     $currentPath = preg_replace($this->prefixPattern, '', $currentPath);
                     assert($currentPath !== null);
 
+                    /* @phpstan-ignore-next-line */
                     $this->collection[] = new LocalFileStat($fileInfo, $currentPath);
                 }
             }
@@ -152,11 +153,14 @@ class LocalFilesystem implements Filesystem
     /**
      * @param string | ReadableStream $contents
      * @param array<string, mixed> $config
-     * @phpstan-param array{local?: array{file_permissions?: int}} $config
+     * @phpstan-param array{local?: array{file_permissions?: int, dir_permissions?: int}} $config
      */
     public function write(string $location, $contents, array $config = []): void
     {
         $path = $this->prefix($location);
+
+        $this->runtime->clearLastError();
+        $this->runtime->mkdir(dirname($path), $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions'], true);
 
         $this->runtime->clearLastError();
         $handle = $this->runtime->fopen($path, 'xb');
@@ -301,7 +305,6 @@ class LocalFilesystem implements Filesystem
             return;
         }
 
-        /** @phpstan-ignore-next-line */
         $this->runtime->chmod($destinationPath, $config['local'][$key]);
     }
 
@@ -338,7 +341,6 @@ class LocalFilesystem implements Filesystem
             return;
         }
 
-        /** @phpstan-ignore-next-line */
         $this->runtime->chmod($destinationPath, $config['local'][$key]);
     }
 
@@ -391,7 +393,7 @@ class LocalFilesystem implements Filesystem
 
     private function prefix(string $location): string
     {
-        $location = preg_replace('#[' . DIRECTORY_SEPARATOR . ']+#', DIRECTORY_SEPARATOR, $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location));
+        $location = preg_replace('#[' . preg_quote(DIRECTORY_SEPARATOR, '#') . ']+#', DIRECTORY_SEPARATOR, $this->prefix . DIRECTORY_SEPARATOR . PathNormalizer::normalizePath($location));
         assert(is_string($location));
 
         return $location !== '/' ? rtrim($location, '/') : $location;

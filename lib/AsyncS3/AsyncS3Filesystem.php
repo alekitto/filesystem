@@ -9,13 +9,9 @@ use AsyncAws\Core\Exception\Http\ServerException;
 use AsyncAws\S3\Exception\InvalidObjectStateException;
 use AsyncAws\S3\Exception\NoSuchKeyException;
 use AsyncAws\S3\S3Client;
-use AsyncAws\S3\ValueObject\AwsObject;
-use AsyncAws\S3\ValueObject\CommonPrefix;
 use AsyncAws\S3\ValueObject\CompletedMultipartUpload;
 use AsyncAws\S3\ValueObject\CompletedPart;
 use AsyncAws\S3\ValueObject\ObjectIdentifier;
-use Doctrine\Common\Collections\AbstractLazyCollection;
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Kcs\Filesystem\Exception\OperationException;
 use Kcs\Filesystem\FileStatInterface;
@@ -32,7 +28,6 @@ use function base64_encode;
 use function hash;
 use function is_string;
 use function ltrim;
-use function preg_quote;
 use function preg_replace;
 use function rawurlencode;
 use function rtrim;
@@ -108,35 +103,7 @@ class AsyncS3Filesystem implements Filesystem
 
         $iterator = $this->client->listObjectsV2($options);
 
-        return new class ($iterator, $this->prefix ?? '') extends AbstractLazyCollection {
-            /** @var iterable<AwsObject|CommonPrefix> */
-            private iterable $iterator;
-            private string $prefixPattern;
-
-            /**
-             * @param iterable<AwsObject|CommonPrefix> $iterator
-             */
-            public function __construct(iterable $iterator, string $prefix)
-            {
-                $this->iterator = $iterator;
-                $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
-            }
-
-            protected function doInitialize(): void
-            {
-                $this->collection = new ArrayCollection();
-
-                foreach ($this->iterator as $item) {
-                    $key = $item instanceof AwsObject ? $item->getKey() : $item->getPrefix();
-                    assert($key !== null);
-
-                    $relativeKey = preg_replace($this->prefixPattern, '', $key);
-                    assert($relativeKey !== null);
-
-                    $this->collection[] = new S3FileStat($item, $key, $relativeKey);
-                }
-            }
-        };
+        return new AsyncS3Collection($iterator, $this->prefix ?? '');
     }
 
     public function stat(string $location): FileStatInterface

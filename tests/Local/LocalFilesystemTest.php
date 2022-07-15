@@ -267,6 +267,7 @@ class LocalFilesystemTest extends TestCase
         $this->runtime->fopen('/TEST_WRITE', 'xb')->willReturn($handle);
         $this->runtime->chmod('/TEST_WRITE', 0644)->shouldBeCalled();
         $this->runtime->fclose($handle)->shouldBeCalled();
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
 
         $this->fs->write('/TEST_WRITE', 'Test content');
 
@@ -281,6 +282,7 @@ class LocalFilesystemTest extends TestCase
         $this->runtime->fopen('/TEST_WRITE', 'wb')->willReturn($handle);
         $this->runtime->chmod('/TEST_WRITE', Argument::cetera())->shouldNotBeCalled();
         $this->runtime->fclose($handle)->shouldBeCalled();
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
 
         $this->fs->write('/TEST_WRITE', 'Test content');
 
@@ -295,6 +297,7 @@ class LocalFilesystemTest extends TestCase
         $this->runtime->fopen('/TEST_WRITE', 'wb')->willReturn($handle);
         $this->runtime->chmod('/TEST_WRITE', 0600)->shouldBeCalled();
         $this->runtime->fclose($handle)->shouldBeCalled();
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
 
         $this->fs->write('/TEST_WRITE', 'Test content', [
             'local' => [
@@ -318,6 +321,7 @@ class LocalFilesystemTest extends TestCase
         };
 
         $this->runtime->fopen('/TEST_WRITE', 'xb')->willReturn(false);
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
         $this->runtime->fopen('/TEST_WRITE', 'wb')->will(function () use ($setError) {
             $setError();
             return false;
@@ -339,6 +343,7 @@ class LocalFilesystemTest extends TestCase
         $this->runtime->fopen('/TEST_WRITE', 'xb')->willReturn($handle);
         $this->runtime->chmod('/TEST_WRITE', 0400)->shouldBeCalled();
         $this->runtime->fclose($handle)->shouldBeCalled();
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
 
         $this->fs->write('/TEST_WRITE', 'Test content', [
             'local' => [
@@ -422,10 +427,10 @@ class LocalFilesystemTest extends TestCase
         $this->fs->deleteDirectory('DeepFolder');
 
         self::assertEquals([
+            __DIR__.'/../../data/DeepFolder/DEEP_FILE',
             __DIR__.'/../../data/DeepFolder/DoubleDeep/DOUBLE_DEEP_FILE',
             __DIR__.'/../../data/DeepFolder/DoubleDeep/TEST_FILE',
             __DIR__.'/../../data/DeepFolder/DoubleDeep',
-            __DIR__.'/../../data/DeepFolder/DEEP_FILE',
             __DIR__.'/../../data/DeepFolder',
         ], $calls);
     }
@@ -486,7 +491,7 @@ class LocalFilesystemTest extends TestCase
             ];
         };
 
-        $this->runtime->unlink(__DIR__.'/../../data/DeepFolder/DoubleDeep/DOUBLE_DEEP_FILE')->shouldBeCalled()->willReturn(true);
+        $this->runtime->unlink(Argument::type('string'))->shouldBeCalled()->willReturn(true);
         $this->runtime->unlink(__DIR__.'/../../data/DeepFolder/DoubleDeep/TEST_FILE')->shouldBeCalled()->will(function () use ($setError) {
             $setError();
             return false;

@@ -100,6 +100,8 @@ XML;
             $this->prophesize(HttpClientInterface::class)->reveal(),
             new NullLogger(),
             new ChainAwsErrorFactory(),
+            null,
+            null,
             true,
             [
                 'NoSuchKey' => NoSuchKeyException::class,
@@ -135,6 +137,8 @@ XML;
             $this->prophesize(HttpClientInterface::class)->reveal(),
             new NullLogger(),
             new ChainAwsErrorFactory(),
+            null,
+            null,
             true,
             [
                 'InvalidObjectState' => InvalidObjectStateException::class,
@@ -232,6 +236,8 @@ XML;
             $this->prophesize(HttpClientInterface::class)->reveal(),
             new NullLogger(),
             new ChainAwsErrorFactory(),
+            null,
+            null,
             true,
             [
                 'NoSuchKey' => NoSuchKeyException::class,
