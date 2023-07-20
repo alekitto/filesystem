@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kcs\Filesystem;
 
 use Iterator;
+use ReturnTypeWillChange;
 
 class IterableIterator implements Iterator
 {
@@ -22,6 +23,7 @@ class IterableIterator implements Iterator
     /**
      * @return mixed
      */
+    #[ReturnTypeWillChange]
     public function current()
     {
         return $this->inner->current();
@@ -35,6 +37,7 @@ class IterableIterator implements Iterator
     /**
      * @return mixed
      */
+    #[ReturnTypeWillChange]
     public function key()
     {
         return $this->inner->key();
