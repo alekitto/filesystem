@@ -17,8 +17,8 @@
         "symfony/mime": "^5.4 || ^6.0"
     },
     "require-dev": {
-        "async-aws/s3": "^1.0",
-        "async-aws/simple-s3": "^1.0",
+        "async-aws/s3": "^2.0",
+        "async-aws/simple-s3": "^2.0",
         "phpspec/prophecy-phpunit": "^2.0",
         "phpunit/phpunit": "^9.5",
         "roave/security-advisories": "dev-master",

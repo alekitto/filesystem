@@ -6,6 +6,7 @@ namespace Kcs\Filesystem\AsyncS3;
 
 use AsyncAws\Core\Exception\Http\ClientException;
 use AsyncAws\Core\Exception\Http\ServerException;
+use AsyncAws\S3\Enum\ObjectCannedACL;
 use AsyncAws\S3\Exception\InvalidObjectStateException;
 use AsyncAws\S3\Exception\NoSuchKeyException;
 use AsyncAws\S3\S3Client;
@@ -39,11 +40,11 @@ use const PHP_INT_MAX;
 
 class AsyncS3Filesystem implements Filesystem
 {
-    private S3Client $client;
-
-    public function __construct(private string $bucket, private string $prefix = '/', S3Client|null $client = null)
-    {
-        $this->client = $client ?? new S3Client();
+    public function __construct(
+        private readonly string $bucket,
+        private readonly string $prefix = '/',
+        private readonly S3Client $client = new S3Client(),
+    ) {
     }
 
     public function exists(string $location): bool
@@ -120,7 +121,7 @@ class AsyncS3Filesystem implements Filesystem
     /**
      * {@inheritdoc}
      *
-     * @phpstan-param array{content-type?:string, s3?: array{content-type?: string, acl?: string, cache-control?: string, metadata?: string}} $config
+     * @phpstan-param array{content-type?:string, s3?: array{content-type?: string, acl?: ObjectCannedACL::*, cache-control?: string, metadata?: array<string, string>}} $config
      */
     public function write(string $location, string|ReadableStream $contents, array $config = []): void
     {
@@ -246,7 +247,7 @@ class AsyncS3Filesystem implements Filesystem
     /**
      * {@inheritdoc}
      *
-     * @phpstan-param array{s3?: array{acl?: string, metadata?: string}} $config
+     * @phpstan-param array{s3?: array{acl?: ObjectCannedACL::*, metadata?: array<string, string>}} $config
      */
     public function createDirectory(string $location, array $config = []): void
     {
@@ -263,7 +264,7 @@ class AsyncS3Filesystem implements Filesystem
     /**
      * {@inheritdoc}
      *
-     * @phpstan-param array{overwrite?: bool, s3?: array{acl?: string}} $config
+     * @phpstan-param array{overwrite?: bool, s3?: array{acl?: ObjectCannedACL::*}} $config
      */
     public function copy(string $source, string $destination, array $config = []): void
     {
