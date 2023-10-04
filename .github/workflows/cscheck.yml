@@ -1,0 +1,34 @@
+name: Check CS
+
+on:
+    push:
+        branches:
+            - main
+
+    pull_request_target:
+        types: [ opened, synchronize ]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        name: Check code style
+        steps:
+            -   uses: actions/checkout@v3
+                with:
+                    fetch-depth: 10
+
+            -   name: Install PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    coverage: none
+                    php-version: "8.1"
+                    tools: cs2pr
+
+            - name: Install Composer dependencies
+              uses: ramsey/composer-install@v2
+              with:
+                  # Bust the cache at least once a month - output format: YYYY-MM.
+                  custom-cache-suffix: $(date -u "+%Y-%m")
+
+            -   name: Run git-phpcs
+                run: composer cscheck -- --report=checkstyle | cs2pr

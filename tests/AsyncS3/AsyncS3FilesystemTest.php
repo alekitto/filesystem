@@ -174,6 +174,25 @@ XML;
         $this->fs->read('this-file');
     }
 
+    public function testReadShouldThrowOnClientException(): void
+    {
+        $response = MockResponse::fromRequest('GET', 'http://localhost', [], new MockResponse('{}', ['http_code' => 400]));
+        $awsResponse = new Response(
+            $response,
+            $this->prophesize(HttpClientInterface::class)->reveal(),
+            new NullLogger(),
+        );
+
+        $this->client->getObject([
+            'Bucket' => 'bucket',
+            'Key' => 'this-file'
+        ])->willReturn(new GetObjectOutput($awsResponse));
+
+        $this->expectException(OperationException::class);
+        $this->expectExceptionMessage('Error while reading file');
+        $this->fs->read('this-file');
+    }
+
     public function testListShouldNotListDeeply(): void
     {
         $response = MockResponse::fromRequest('GET', 'http://localhost', [], new MockResponse('{}', ['http_code' => 200]));
@@ -193,6 +212,7 @@ XML;
             ->shouldBeCalled()
             ->willReturn($output);
 
+        $this->fs->list('/');
         $this->fs->list('/', false);
     }
 

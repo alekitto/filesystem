@@ -41,9 +41,7 @@ class SystemRuntime implements RuntimeInterface
         return is_readable($filename);
     }
 
-    /**
-     * @return false|resource
-     */
+    /** @return false|resource */
     public function fopen(string $filename, string $mode)
     {
         return @fopen($filename, $mode);
@@ -90,10 +88,8 @@ class SystemRuntime implements RuntimeInterface
         error_clear_last();
     }
 
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function getLastError(): ?array
+    /** @return array<string, mixed>|null */
+    public function getLastError(): array|null
     {
         return error_get_last();
     }

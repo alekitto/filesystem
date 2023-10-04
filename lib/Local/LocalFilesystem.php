@@ -46,13 +46,13 @@ class LocalFilesystem implements Filesystem
      * @var array<string, mixed>
      * @phpstan-var array{file_permissions: int, dir_permissions: int}
      */
-    private array $defaultConfig;
+    private readonly array $defaultConfig; // phpcs:ignore SlevomatCodingStandard.Classes.RequireConstructorPropertyPromotion.RequiredConstructorPropertyPromotion
 
     /**
      * @param array<string, mixed> $defaultConfig
      * @phpstan-param array{file_permissions?: int, dir_permissions?: int} $defaultConfig
      */
-    public function __construct(string $location, array $defaultConfig = [], ?RuntimeInterface $runtime = null)
+    public function __construct(string $location, array $defaultConfig = [], RuntimeInterface|null $runtime = null)
     {
         $this->runtime = $runtime ?? new SystemRuntime();
         $this->prefix = preg_match('#^[/]+$#', $location) ? '/' : rtrim($location, DIRECTORY_SEPARATOR);
@@ -90,9 +90,7 @@ class LocalFilesystem implements Filesystem
         return new ResourceStream($handle);
     }
 
-    /**
-     * @return Collection<FileStatInterface>
-     */
+    /** @return Collection<FileStatInterface> */
     public function list(string $location, bool $deep = false): Collection
     {
         $path = $this->prefix($location);
@@ -105,16 +103,11 @@ class LocalFilesystem implements Filesystem
             : new DirectoryIterator($path);
 
         return new class ($iterator, $this->prefix ?? '') extends AbstractLazyCollection {
-            /** @var iterable<SplFileInfo> */
-            private iterable $iterator;
             private string $prefixPattern;
 
-            /**
-             * @param iterable<SplFileInfo> $iterator
-             */
-            public function __construct(iterable $iterator, string $prefix)
+            /** @param iterable<SplFileInfo> $iterator */
+            public function __construct(private iterable $iterator, string $prefix)
             {
-                $this->iterator = $iterator;
                 $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
             }
 
@@ -151,11 +144,10 @@ class LocalFilesystem implements Filesystem
     }
 
     /**
-     * @param string | ReadableStream $contents
      * @param array<string, mixed> $config
      * @phpstan-param array{local?: array{file_permissions?: int, dir_permissions?: int}} $config
      */
-    public function write(string $location, $contents, array $config = []): void
+    public function write(string $location, string|ReadableStream $contents, array $config = []): void
     {
         $path = $this->prefix($location);
 
@@ -168,6 +160,7 @@ class LocalFilesystem implements Filesystem
             $this->runtime->clearLastError();
             $handle = $this->runtime->fopen($path, 'wb');
 
+            /* @phpstan-ignore-next-line */
             if ($handle !== false && isset($config['local']['file_permissions']) && is_int($config['local']['file_permissions'])) {
                 $this->runtime->chmod($path, $config['local']['file_permissions']);
             }
@@ -255,6 +248,7 @@ class LocalFilesystem implements Filesystem
     {
         $path = $this->prefix($location);
         if ($this->runtime->isDir($path)) {
+            /* @phpstan-ignore-next-line */
             if (isset($config['local']['dir_permissions']) && is_int($config['local']['dir_permissions'])) {
                 $this->runtime->chmod($path, $config['local']['dir_permissions']);
             }
@@ -291,7 +285,7 @@ class LocalFilesystem implements Filesystem
 
         $this->ensureDirectoryExists(
             dirname($destinationPath),
-            ['local' => ['dir_permissions' => $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions']]]
+            ['local' => ['dir_permissions' => $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions']]],
         );
 
         if (! $this->runtime->rename($sourcePath, $destinationPath)) {
@@ -327,7 +321,7 @@ class LocalFilesystem implements Filesystem
 
         $this->ensureDirectoryExists(
             dirname($destinationPath),
-            ['local' => ['dir_permissions' => $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions']]]
+            ['local' => ['dir_permissions' => $config['local']['dir_permissions'] ?? $this->defaultConfig['dir_permissions']]],
         );
 
         if (! $this->runtime->copy($sourcePath, $destinationPath)) {
@@ -373,7 +367,7 @@ class LocalFilesystem implements Filesystem
      * @param array<string, mixed> $error
      * @phpstan-param array{message?: string, type?: int, file?: string, line?: int} $error
      */
-    private function exceptionFromError(?array $error = null): ErrorException
+    private function exceptionFromError(array|null $error = null): ErrorException
     {
         $error ??= $this->runtime->getLastError();
 

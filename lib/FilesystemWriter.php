@@ -11,10 +11,9 @@ interface FilesystemWriter
     /**
      * Write a file to the current filesystem.
      *
-     * @param string | ReadableStream $contents
      * @param array<string, mixed> $config
      */
-    public function write(string $location, $contents, array $config = []): void;
+    public function write(string $location, string|ReadableStream $contents, array $config = []): void;
 
     /**
      * Deletes a file.

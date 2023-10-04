@@ -22,9 +22,7 @@ use function is_string;
 
 class FilesystemExtension extends Extension
 {
-    /**
-     * @param array<string, mixed> $configs
-     */
+    /** @param array<string, mixed> $configs */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
@@ -45,10 +43,8 @@ class FilesystemExtension extends Extension
         }
     }
 
-    /**
-     * @param array<string, mixed> $options
-     */
-    private function createDefinition(string $type, array $options): ?Definition
+    /** @param array<string, mixed> $options */
+    private function createDefinition(string $type, array $options): Definition|null
     {
         switch ($type) {
             case 's3':

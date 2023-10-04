@@ -15,16 +15,11 @@ use function Safe\preg_replace;
 
 class AsyncS3Collection extends AbstractLazyCollection
 {
-    /** @var iterable<AwsObject|CommonPrefix> */
-    private iterable $iterator;
     private string $prefixPattern;
 
-    /**
-     * @param iterable<AwsObject|CommonPrefix> $iterator
-     */
-    public function __construct(iterable $iterator, string $prefix)
+    /** @param iterable<AwsObject|CommonPrefix> $iterator */
+    public function __construct(private readonly iterable $iterator, string $prefix)
     {
-        $this->iterator = $iterator;
         $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
     }
 

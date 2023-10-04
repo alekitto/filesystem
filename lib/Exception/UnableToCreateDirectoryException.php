@@ -10,11 +10,11 @@ use function sprintf;
 
 class UnableToCreateDirectoryException extends OperationException
 {
-    public function __construct(string $path = '', ?Throwable $previous = null)
+    public function __construct(string $path = '', Throwable|null $previous = null)
     {
         parent::__construct(
             sprintf('Unable to create directory "%s"', $path),
-            $previous
+            $previous,
         );
     }
 }

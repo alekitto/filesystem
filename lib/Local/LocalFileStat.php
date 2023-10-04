@@ -16,17 +16,13 @@ use function array_key_first;
 
 class LocalFileStat implements FileStatInterface
 {
-    private SplFileInfo $fileInfo;
     private DateTimeImmutable $lastModified;
     private int $fileSize;
-    private string $relativePath;
 
-    public function __construct(SplFileInfo $fileInfo, string $relativePath)
+    public function __construct(private SplFileInfo $fileInfo, private string $relativePath)
     {
-        $this->fileInfo = $fileInfo;
-        $this->lastModified = new DateTimeImmutable('@' . $fileInfo->getMTime());
+        $this->lastModified = new DateTimeImmutable('@' . ($fileInfo->getMTime() ?: 0));
         $this->fileSize = $fileInfo->isDir() ? -1 : $fileInfo->getSize();
-        $this->relativePath = $relativePath;
     }
 
     public function path(): string
@@ -58,7 +54,7 @@ class LocalFileStat implements FileStatInterface
         $fromExt = $mimeTypes->getMimeTypes($this->fileInfo->getExtension());
         try {
             return $mimeTypes->guessMimeType($this->fileInfo->getPathname());
-        } catch (LogicException | InvalidArgumentException $e) {
+        } catch (LogicException | InvalidArgumentException) {
             return empty($fromExt) ? 'application/octet-stream' : $fromExt[array_key_first($fromExt)];
         }
     }

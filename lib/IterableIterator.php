@@ -12,19 +12,14 @@ class IterableIterator implements Iterator
     /** @var Iterator<mixed> */
     private Iterator $inner;
 
-    /**
-     * @param iterable<mixed> $iterable
-     */
+    /** @param iterable<mixed> $iterable */
     public function __construct(iterable $iterable)
     {
         $this->inner = (static fn () => yield from $iterable)();
     }
 
-    /**
-     * @return mixed
-     */
     #[ReturnTypeWillChange]
-    public function current()
+    public function current(): mixed
     {
         return $this->inner->current();
     }
@@ -34,11 +29,8 @@ class IterableIterator implements Iterator
         $this->inner->next();
     }
 
-    /**
-     * @return mixed
-     */
     #[ReturnTypeWillChange]
-    public function key()
+    public function key(): mixed
     {
         return $this->inner->key();
     }

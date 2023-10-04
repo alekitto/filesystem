@@ -16,22 +16,15 @@ use function array_key_first;
 
 class S3FileStat implements FileStatInterface
 {
-    /** @var AwsObject | CommonPrefix | HeadObjectOutput */
-    private $object;
     private DateTimeImmutable $lastModified;
     private int $fileSize;
-    private ?string $mimeType = null;
-    private string $key;
-    private string $relativeKey;
+    private string|null $mimeType = null;
 
-    /**
-     * @param AwsObject | CommonPrefix | HeadObjectOutput $object
-     */
-    public function __construct($object, string $key, string $relativeKey)
-    {
-        $this->object = $object;
-        $this->key = $key;
-        $this->relativeKey = $relativeKey;
+    public function __construct(
+        private readonly AwsObject|CommonPrefix|HeadObjectOutput $object,
+        private readonly string $key,
+        private readonly string $relativeKey,
+    ) {
         if ($object instanceof AwsObject) {
             $this->lastModified = $object->getLastModified() ?? new DateTimeImmutable('@0');
             $this->fileSize = (int) $object->getSize();

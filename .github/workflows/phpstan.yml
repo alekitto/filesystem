@@ -1,0 +1,35 @@
+name: PHPStan
+
+on:
+    push:
+        branches:
+            - main
+
+    pull_request_target:
+        types: [ opened, synchronize ]
+
+jobs:
+    build:
+        env:
+            COMPOSER_ROOT_VERSION: dev-master
+
+        runs-on: ubuntu-latest
+        name: Static analysis
+        steps:
+            -   uses: actions/checkout@v3
+
+            -   name: Install PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    coverage: none
+                    php-version: "8.2"
+                    tools: cs2pr
+
+            - name: Install Composer dependencies
+              uses: ramsey/composer-install@v2
+              with:
+                  # Bust the cache at least once a month - output format: YYYY-MM.
+                  custom-cache-suffix: $(date -u "+%Y-%m")
+
+            -   name: Run a static analysis with phpstan/phpstan
+                run: php vendor/bin/phpstan analyse lib/ -c ./phpstan.neon --level=9 --no-progress -vvv --memory-limit=2048M --error-format=checkstyle | cs2pr

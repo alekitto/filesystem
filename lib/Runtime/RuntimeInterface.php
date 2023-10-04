@@ -14,14 +14,10 @@ interface RuntimeInterface
 
     public function isReadable(string $filename): bool;
 
-    /**
-     * @return false|resource
-     */
+    /** @return false|resource */
     public function fopen(string $filename, string $mode);
 
-    /**
-     * @param resource $handle
-     */
+    /** @param resource $handle */
     public function fclose($handle): void;
 
     public function chmod(string $filename, int $permissions): bool;
@@ -42,5 +38,5 @@ interface RuntimeInterface
      * @return array<string, mixed>|null
      * @phpstan-return array{message?: string, type?: int, file?: string, line?: int}
      */
-    public function getLastError(): ?array;
+    public function getLastError(): array|null;
 }

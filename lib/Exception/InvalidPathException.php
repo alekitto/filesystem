@@ -11,7 +11,7 @@ use function sprintf;
 
 class InvalidPathException extends RuntimeException implements ExceptionInterface
 {
-    public function __construct(string $path, ?Throwable $previous = null)
+    public function __construct(string $path, Throwable|null $previous = null)
     {
         parent::__construct(sprintf('Invalid path "%s"', $path), 0, $previous);
     }

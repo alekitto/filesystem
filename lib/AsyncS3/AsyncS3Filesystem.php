@@ -39,14 +39,10 @@ use const PHP_INT_MAX;
 
 class AsyncS3Filesystem implements Filesystem
 {
-    private string $bucket;
-    private string $prefix;
     private S3Client $client;
 
-    public function __construct(string $bucket, string $prefix = '/', ?S3Client $client = null)
+    public function __construct(private string $bucket, private string $prefix = '/', S3Client|null $client = null)
     {
-        $this->bucket = $bucket;
-        $this->prefix = $prefix;
         $this->client = $client ?? new S3Client();
     }
 
@@ -91,9 +87,7 @@ class AsyncS3Filesystem implements Filesystem
         });
     }
 
-    /**
-     * @return Collection<FileStatInterface>
-     */
+    /** @return Collection<FileStatInterface> */
     public function list(string $location, bool $deep = false): Collection
     {
         $options = ['Bucket' => $this->bucket, 'Prefix' => $this->prefix($location)];
@@ -114,8 +108,6 @@ class AsyncS3Filesystem implements Filesystem
                 'Bucket' => $this->bucket,
                 'Key' => $path,
             ]), $path, PathNormalizer::normalizePath($location));
-        } catch (NoSuchKeyException $e) {
-            throw new OperationException('File does not exists', $e);
         } catch (ClientException | ServerException $e) {
             if ($e->getResponse()->getStatusCode() === 404) {
                 throw new OperationException('File does not exists', $e);
@@ -130,7 +122,7 @@ class AsyncS3Filesystem implements Filesystem
      *
      * @phpstan-param array{content-type?:string, s3?: array{content-type?: string, acl?: string, cache-control?: string, metadata?: string}} $config
      */
-    public function write(string $location, $contents, array $config = []): void
+    public function write(string $location, string|ReadableStream $contents, array $config = []): void
     {
         if (is_string($contents)) {
             $contentStream = new BufferStream();
@@ -261,9 +253,7 @@ class AsyncS3Filesystem implements Filesystem
         $this->write(rtrim($this->prefix($location), '/') . '/', '', $config);
     }
 
-    /**
-     * @inheritDoc
-     */
+    /** @inheritDoc */
     public function move(string $source, string $destination, array $config = []): void
     {
         $this->copy($source, $destination, $config);
