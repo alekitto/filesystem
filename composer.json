@@ -14,7 +14,7 @@
         "php": "^8.1",
         "doctrine/collections": "^1.0 || ^2.0",
         "kcs/stream": "^0.1.1",
-        "symfony/mime": "^5.4 || ^6.0"
+        "symfony/mime": ">=5.4"
     },
     "require-dev": {
         "async-aws/s3": "^2.0",
@@ -23,11 +23,11 @@
         "phpunit/phpunit": "^9.5",
         "roave/security-advisories": "dev-master",
         "solido/php-coding-standards": "dev-master",
-        "symfony/config": "^5.4 || ^6.0",
-        "symfony/dependency-injection": "5.4 || ^6.0",
-        "symfony/http-kernel": "^5.4 || ^6.0",
-        "symfony/process": "^5.4 || ^6.0",
-        "symfony/var-dumper": "^5.4 || ^6.0"
+        "symfony/config": ">=5.4",
+        "symfony/dependency-injection": ">=5.4",
+        "symfony/http-kernel": ">=5.4",
+        "symfony/process": ">=5.4",
+        "symfony/var-dumper": ">=5.4"
     },
     "autoload": {
         "psr-4": {
@@ -40,10 +40,10 @@
         }
     },
     "archive": {
-        "exclude": [ ".github", "data", "tests", "phpunit.xml", "infection.json.dist", "phpstan.neon" ]
+        "exclude": [ ".github", "data", "tests", "phpunit.xml", "infection.json.dist" ]
     },
     "scripts": {
-        "phpstan": "phpstan analyse lib/ -c ./phpstan.neon --level=9 --no-progress -vvv --memory-limit=2048M",
+        "phpstan": "phpstan analyse lib/ -c vendor/solido/php-coding-standards/phpstan.neon --level=9 --no-progress -vvv --memory-limit=2048M",
         "cscheck": "vendor/bin/phpcs --standard=Solido lib/",
         "csfix": "vendor/bin/phpcbf --standard=Solido lib/"
     },
