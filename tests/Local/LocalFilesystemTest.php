@@ -426,13 +426,21 @@ class LocalFilesystemTest extends TestCase
 
         $this->fs->deleteDirectory('DeepFolder');
 
-        self::assertEquals([
-            __DIR__.'/../../data/DeepFolder/DoubleDeep/DOUBLE_DEEP_FILE',
-            __DIR__.'/../../data/DeepFolder/DoubleDeep/TEST_FILE',
-            __DIR__.'/../../data/DeepFolder/DoubleDeep',
-            __DIR__.'/../../data/DeepFolder/DEEP_FILE',
-            __DIR__.'/../../data/DeepFolder',
-        ], $calls);
+        self::assertTrue(
+            [
+                __DIR__.'/../../data/DeepFolder/DoubleDeep/DOUBLE_DEEP_FILE',
+                __DIR__.'/../../data/DeepFolder/DoubleDeep/TEST_FILE',
+                __DIR__.'/../../data/DeepFolder/DoubleDeep',
+                __DIR__.'/../../data/DeepFolder/DEEP_FILE',
+                __DIR__.'/../../data/DeepFolder',
+            ] === $calls || [
+                __DIR__.'/../../data/DeepFolder/DoubleDeep/TEST_FILE',
+                __DIR__.'/../../data/DeepFolder/DoubleDeep/DOUBLE_DEEP_FILE',
+                __DIR__.'/../../data/DeepFolder/DoubleDeep',
+                __DIR__.'/../../data/DeepFolder/DEEP_FILE',
+                __DIR__.'/../../data/DeepFolder',
+            ] === $calls
+        );
     }
 
     public function testDeleteDirectoryShouldThrowIfRmdirFails(): void

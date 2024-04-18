@@ -119,7 +119,7 @@ class AsyncS3Filesystem implements Filesystem
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @phpstan-param array{content-type?:string, s3?: array{content-type?: string, acl?: ObjectCannedACL::*, cache-control?: string, metadata?: array<string, string>}} $config
      */
@@ -245,7 +245,7 @@ class AsyncS3Filesystem implements Filesystem
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @phpstan-param array{s3?: array{acl?: ObjectCannedACL::*, metadata?: array<string, string>}} $config
      */
@@ -262,7 +262,7 @@ class AsyncS3Filesystem implements Filesystem
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      *
      * @phpstan-param array{overwrite?: bool, s3?: array{acl?: ObjectCannedACL::*}} $config
      */
