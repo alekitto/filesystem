@@ -6,20 +6,24 @@ namespace Kcs\Filesystem\AsyncS3;
 
 use AsyncAws\S3\ValueObject\AwsObject;
 use AsyncAws\S3\ValueObject\CommonPrefix;
+use Closure;
 use Doctrine\Common\Collections\AbstractLazyCollection;
 use Doctrine\Common\Collections\ArrayCollection;
 
 use function assert;
 use function preg_quote;
-use function Safe\preg_replace;
+use function preg_replace;
 
 class AsyncS3Collection extends AbstractLazyCollection
 {
     private string $prefixPattern;
 
     /** @param iterable<AwsObject|CommonPrefix> $iterator */
-    public function __construct(private readonly iterable $iterator, string $prefix)
-    {
+    public function __construct(
+        private readonly iterable $iterator,
+        string $prefix,
+        private readonly Closure $getObjectAcl,
+    ) {
         $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
     }
 
@@ -35,7 +39,12 @@ class AsyncS3Collection extends AbstractLazyCollection
             assert($relativeKey !== null);
 
             /* @phpstan-ignore-next-line */
-            $this->collection[] = new S3FileStat($item, $key, $relativeKey);
+            $this->collection[] = new S3FileStat(
+                $item,
+                $key,
+                $relativeKey,
+                fn () => ($this->getObjectAcl)($key),
+            );
         }
     }
 }

@@ -39,6 +39,7 @@ class Configuration implements ConfigurationInterface
                         ->performNoDeepMerging()
                         ->children()
                             ->scalarNode('type')->isRequired()->end()
+                            ->scalarNode('stream_wrapper_protocol')->end()
                             ->arrayNode('options')
                                 ->variablePrototype()->end()
                                 ->defaultValue([])

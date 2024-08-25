@@ -98,17 +98,32 @@ class AsyncS3Filesystem implements Filesystem
 
         $iterator = $this->client->listObjectsV2($options);
 
-        return new AsyncS3Collection($iterator, $this->prefix ?? '');
+        return new AsyncS3Collection(
+            $iterator,
+            $this->prefix ?? '',
+            fn (string $prefix) => $this->client->getObjectAcl([
+                'Bucket' => $this->bucket,
+                'Key' => $prefix,
+            ]),
+        );
     }
 
     public function stat(string $location): FileStatInterface
     {
         $path = $this->prefix($location);
         try {
-            return new S3FileStat($this->client->headObject([
-                'Bucket' => $this->bucket,
-                'Key' => $path,
-            ]), $path, PathNormalizer::normalizePath($location));
+            return new S3FileStat(
+                $this->client->headObject([
+                    'Bucket' => $this->bucket,
+                    'Key' => $path,
+                ]),
+                $path,
+                PathNormalizer::normalizePath($location),
+                fn () => $this->client->getObjectAcl([
+                    'Bucket' => $this->bucket,
+                    'Key' => $path,
+                ]),
+            );
         } catch (ClientException | ServerException $e) {
             if ($e->getResponse()->getStatusCode() === 404) {
                 throw new OperationException('File does not exists', $e);

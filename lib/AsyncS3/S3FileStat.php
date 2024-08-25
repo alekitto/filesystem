@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Kcs\Filesystem\AsyncS3;
 
+use AsyncAws\S3\Result\GetObjectAclOutput;
 use AsyncAws\S3\Result\HeadObjectOutput;
 use AsyncAws\S3\ValueObject\AwsObject;
 use AsyncAws\S3\ValueObject\CommonPrefix;
+use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
+use Kcs\Filesystem\AsyncS3\Visibility\PortableVisibilityConverter;
 use Kcs\Filesystem\FileStatInterface;
+use Kcs\Filesystem\Visibility;
 use Symfony\Component\Mime\MimeTypes;
 
 use function array_key_first;
@@ -19,11 +23,13 @@ class S3FileStat implements FileStatInterface
     private DateTimeImmutable $lastModified;
     private int $fileSize;
     private string|null $mimeType = null;
+    private GetObjectAclOutput $objectAcl;
 
     public function __construct(
         private readonly AwsObject|CommonPrefix|HeadObjectOutput $object,
         private readonly string $key,
         private readonly string $relativeKey,
+        private readonly Closure $getObjectAcl,
     ) {
         if ($object instanceof AwsObject) {
             $this->lastModified = $object->getLastModified() ?? new DateTimeImmutable('@0');
@@ -75,5 +81,15 @@ class S3FileStat implements FileStatInterface
         }
 
         return empty($fromExt) ? 'application/octet-stream' : $fromExt[array_key_first($fromExt)];
+    }
+
+    public function visibility(): Visibility
+    {
+        if (! isset($this->objectAcl)) {
+            $this->objectAcl = ($this->getObjectAcl)();
+        }
+
+        return (new PortableVisibilityConverter())
+            ->aclToVisibility($this->objectAcl->getGrants());
     }
 }

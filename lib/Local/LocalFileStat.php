@@ -8,6 +8,8 @@ use DateTimeImmutable;
 use DateTimeInterface;
 use InvalidArgumentException;
 use Kcs\Filesystem\FileStatInterface;
+use Kcs\Filesystem\Local\UnixVisibility\PortableVisibilityConverter;
+use Kcs\Filesystem\Visibility;
 use LogicException;
 use SplFileInfo;
 use Symfony\Component\Mime\MimeTypes;
@@ -57,5 +59,15 @@ class LocalFileStat implements FileStatInterface
         } catch (LogicException | InvalidArgumentException) {
             return empty($fromExt) ? 'application/octet-stream' : $fromExt[array_key_first($fromExt)];
         }
+    }
+
+    public function visibility(): Visibility
+    {
+        $converter = new PortableVisibilityConverter();
+        if ($this->fileInfo->isDir()) {
+            return $converter->inverseForDirectory($this->fileInfo->getPerms());
+        }
+
+        return $converter->inverseForFile($this->fileInfo->getPerms());
     }
 }

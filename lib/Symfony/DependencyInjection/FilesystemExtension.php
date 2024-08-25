@@ -8,6 +8,7 @@ use AsyncAws\S3\S3Client;
 use Kcs\Filesystem\AsyncS3\AsyncS3Filesystem;
 use Kcs\Filesystem\Filesystem;
 use Kcs\Filesystem\Local\LocalFilesystem;
+use Kcs\Filesystem\Symfony\StreamWrapperRegisterer;
 use RuntimeException;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -28,6 +29,7 @@ class FilesystemExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
+        $streamWrappers = [];
         foreach ($config['storages'] as $name => $storageConfig) {
             $options = $container->resolveEnvPlaceholders($storageConfig['options']);
             assert(is_array($options));
@@ -40,7 +42,19 @@ class FilesystemExtension extends Extension
             }
 
             $container->registerAliasForArgument('kcs_filesystem.filesystem.' . $name, Filesystem::class, $name)->setPublic(false);
+
+            $protocol = $storageConfig['stream_wrapper_protocol'] ?? null;
+            if (empty($protocol)) {
+                continue;
+            }
+
+            $streamWrappers[$protocol] = new Reference('kcs_filesystem.filesystem.' . $name);
         }
+
+        $container
+            ->register('kcs_filesystem.stream_wrapper_registerer', StreamWrapperRegisterer::class)
+            ->setArguments([$streamWrappers])
+            ->setPublic(true);
     }
 
     /** @param array<string, mixed> $options */

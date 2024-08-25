@@ -30,4 +30,9 @@ interface FileStatInterface
      * "application/x-directory" is returned in case $path represents a directory.
      */
     public function mimeType(): string;
+
+    /**
+     * Gets the file visibility (private/public).
+     */
+    public function visibility(): Visibility;
 }
