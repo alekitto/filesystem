@@ -115,11 +115,12 @@ class LocalFilesystem implements Filesystem
             {
                 $this->collection = new ArrayCollection();
 
-                foreach ($this->iterator as $fileInfo) {
+                foreach ($this->iterator as $iterator) {
                     if ($this->iterator instanceof DirectoryIterator && $this->iterator->isDot()) {
                         continue;
                     }
 
+                    $fileInfo = $iterator->getFileInfo();
                     $currentPath = (string) $fileInfo->getRealPath();
                     $currentPath = preg_replace($this->prefixPattern, '', $currentPath);
                     assert($currentPath !== null);
