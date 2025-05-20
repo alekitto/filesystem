@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kcs\Filesystem\StreamWrapper\Command;
 
 use Kcs\Filesystem\StreamWrapper\Stream;
+use Kcs\Stream\Exception\OperationException;
 use Kcs\Stream\Exception\StreamError;
 use Kcs\Stream\ResourceStream;
 use Kcs\Stream\WritableStream;
@@ -86,7 +87,11 @@ final class StreamOpenCommand
 
         $current->alwaysAppend = $mode[0] === 'a';
         if (isset($current->handle) && ! $current->alwaysAppend && method_exists($current->handle, 'rewind')) {
-            $current->handle->rewind();
+            try {
+                $current->handle->rewind();
+            } catch (OperationException) {
+                // Rewind not supported by stream, ignore.
+            }
         }
 
         if (isset($current->handle) && $options & STREAM_USE_PATH) {
