@@ -16,9 +16,7 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Reference;
 
-use function assert;
 use function class_exists;
-use function is_array;
 use function is_string;
 
 class FilesystemExtension extends Extension
@@ -31,8 +29,8 @@ class FilesystemExtension extends Extension
 
         $streamWrappers = [];
         foreach ($config['storages'] as $name => $storageConfig) {
+            /** @var array<string, mixed> $options */
             $options = $container->resolveEnvPlaceholders($storageConfig['options']);
-            assert(is_array($options));
 
             $adapter = $this->createDefinition($storageConfig['type'], $options);
             if ($adapter !== null) {

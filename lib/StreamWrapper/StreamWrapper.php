@@ -131,9 +131,7 @@ final class StreamWrapper
         return in_array($protocol, stream_get_wrappers(), true);
     }
 
-    /**
-     * @param array<int|string> $args
-     */
+    /** @param array<int|string> $args */
     public function __call(string $method, array $args): mixed
     {
         $class = __NAMESPACE__ . '\\Command\\' . str_replace('_', '', ucwords($method, '_')) . 'Command';

@@ -43,7 +43,7 @@
         "exclude": [ ".github", "data", "tests", "phpunit.xml", "infection.json.dist" ]
     },
     "scripts": {
-        "phpstan": "phpstan analyse lib/ -c vendor/solido/php-coding-standards/phpstan.neon --level=9 --no-progress -vvv --memory-limit=2048M",
+        "phpstan": "phpstan analyse lib/ --level=9 --no-progress -vvv --memory-limit=2048M",
         "cscheck": "vendor/bin/phpcs --standard=Solido lib/",
         "csfix": "vendor/bin/phpcbf --standard=Solido lib/"
     },

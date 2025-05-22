@@ -55,7 +55,7 @@ class LocalFilesystem implements Filesystem
     public function __construct(string $location, array $defaultConfig = [], RuntimeInterface|null $runtime = null)
     {
         $this->runtime = $runtime ?? new SystemRuntime();
-        $this->prefix = preg_match('#^[/]+$#', $location) ? '/' : rtrim($location, DIRECTORY_SEPARATOR);
+        $this->prefix = preg_match('#^/+$#', $location) ? '/' : rtrim($location, DIRECTORY_SEPARATOR);
 
         $defaultConfig['file_permissions'] ??= 0644;
         $defaultConfig['dir_permissions'] ??= 0755;
@@ -102,11 +102,11 @@ class LocalFilesystem implements Filesystem
             ? $this->getRecursiveDirectoryIterator($path)
             : new DirectoryIterator($path);
 
-        return new class ($iterator, $this->prefix ?? '') extends AbstractLazyCollection {
+        return new class ($iterator, $this->prefix) extends AbstractLazyCollection {
             private string $prefixPattern;
 
             /** @param iterable<SplFileInfo> $iterator */
-            public function __construct(private iterable $iterator, string $prefix)
+            public function __construct(private readonly iterable $iterator, string $prefix)
             {
                 $this->prefixPattern = '#^' . preg_quote($prefix, '#') . '#';
             }
@@ -184,7 +184,6 @@ class LocalFilesystem implements Filesystem
             $contents = $contentStream;
         }
 
-        assert($contents instanceof ReadableStream);
         while (! $contents->eof()) {
             $stream->write($contents->read(512));
         }
@@ -383,6 +382,7 @@ class LocalFilesystem implements Filesystem
 
     private function getRecursiveDirectoryIterator(string $location, int $mode = RecursiveIteratorIterator::SELF_FIRST): RecursiveIteratorIterator
     {
+        /** @phpstan-ignore-next-line */
         return new RecursiveIteratorIterator(new RecursiveDirectoryIterator($location, FilesystemIterator::SKIP_DOTS), $mode);
     }
 

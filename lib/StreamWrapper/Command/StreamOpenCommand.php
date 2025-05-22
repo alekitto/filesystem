@@ -91,6 +91,7 @@ final class StreamOpenCommand
                 $current->handle->rewind();
             } catch (OperationException) {
                 // Rewind not supported by stream, ignore.
+                // @ignoreException
             }
         }
 

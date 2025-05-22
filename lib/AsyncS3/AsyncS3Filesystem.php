@@ -100,7 +100,7 @@ class AsyncS3Filesystem implements Filesystem
 
         return new AsyncS3Collection(
             $iterator,
-            $this->prefix ?? '',
+            $this->prefix,
             fn (string $prefix) => $this->client->getObjectAcl([
                 'Bucket' => $this->bucket,
                 'Key' => $prefix,

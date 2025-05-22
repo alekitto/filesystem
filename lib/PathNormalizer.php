@@ -21,7 +21,6 @@ class PathNormalizer
     public static function normalizePath(string $path): string
     {
         $path = str_replace('\\', '/', $path);
-        assert(is_string($path));
         $path = preg_replace('#\p{C}+#u', '', $path);
         assert(is_string($path));
         $path = preg_replace('#^(./)+#', '', $path);
