@@ -86,6 +86,10 @@ class FilesystemExtension extends Extension
                         $configuration['region'] = $options['region'];
                     }
 
+                    if (isset($options['endpoint'])) {
+                        $configuration['endpoint'] = $options['endpoint'];
+                    }
+
                     $client = new Definition(S3Client::class, [$configuration]);
                 }
 
