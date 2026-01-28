@@ -10,6 +10,7 @@ use AsyncAws\SimpleS3\SimpleS3Client;
 use Kcs\Filesystem\AsyncS3\AsyncS3Filesystem;
 use Kcs\Filesystem\Exception\OperationException;
 use Kcs\Stream\ResourceStream;
+use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
@@ -197,9 +198,7 @@ class AsyncS3FilesystemIntegrationTest extends TestCase
         $this->fs->stat('non_existent_file.txt');
     }
 
-    /**
-     * @depends testShouldWriteAndReadBigFile
-     */
+    #[Depends('testShouldWriteAndReadBigFile')]
     public function testStatShouldReturnAStatInfoObject(): void
     {
         $statObject = $this->fs->stat('test_long.txt');

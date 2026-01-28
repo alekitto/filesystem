@@ -14,7 +14,6 @@ class Configuration implements ConfigurationInterface
         $treeBuilder = new TreeBuilder('filesystem');
         $rootNode = $treeBuilder->getRootNode();
 
-        /** @phpstan-ignore-next-line */
         $rootNode
             ->fixXmlConfig('storage')
             ->children()

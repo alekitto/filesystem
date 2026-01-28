@@ -28,23 +28,23 @@ use const E_USER_WARNING;
 
 final class StreamWrapper
 {
-    public const LOCK_STORE = 'lock_store';
-    public const LOCK_TTL = 'lock_ttl';
+    public const string LOCK_STORE = 'lock_store';
+    public const string LOCK_TTL = 'lock_ttl';
 
-    public const IGNORE_VISIBILITY_ERRORS = 'ignore_visibility_errors';
+    public const string IGNORE_VISIBILITY_ERRORS = 'ignore_visibility_errors';
 
-    public const EMULATE_DIRECTORY_LAST_MODIFIED = 'emulate_directory_last_modified';
+    public const string EMULATE_DIRECTORY_LAST_MODIFIED = 'emulate_directory_last_modified';
 
-    public const UID = 'uid';
-    public const GID = 'gid';
+    public const string UID = 'uid';
+    public const string GID = 'gid';
 
-    public const VISIBILITY_FILE_PUBLIC = 'visibility_file_public';
-    public const VISIBILITY_FILE_PRIVATE = 'visibility_file_private';
-    public const VISIBILITY_DIRECTORY_PUBLIC = 'visibility_directory_public';
-    public const VISIBILITY_DIRECTORY_PRIVATE = 'visibility_directory_private';
-    public const VISIBILITY_DEFAULT_FOR_DIRECTORIES = 'visibility_default_for_directories';
+    public const string VISIBILITY_FILE_PUBLIC = 'visibility_file_public';
+    public const string VISIBILITY_FILE_PRIVATE = 'visibility_file_private';
+    public const string VISIBILITY_DIRECTORY_PUBLIC = 'visibility_directory_public';
+    public const string VISIBILITY_DIRECTORY_PRIVATE = 'visibility_directory_private';
+    public const string VISIBILITY_DEFAULT_FOR_DIRECTORIES = 'visibility_default_for_directories';
 
-    public const DEFAULT_CONFIGURATION = [
+    public const array DEFAULT_CONFIGURATION = [
         self::LOCK_STORE => 'flock:///tmp',
         self::LOCK_TTL => 300,
 

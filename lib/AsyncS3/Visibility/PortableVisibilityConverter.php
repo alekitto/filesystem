@@ -9,10 +9,10 @@ use Kcs\Filesystem\Visibility;
 
 class PortableVisibilityConverter implements VisibilityConverter
 {
-    private const PUBLIC_GRANTEE_URI = 'http://acs.amazonaws.com/groups/global/AllUsers';
-    private const PUBLIC_GRANTS_PERMISSION = 'READ';
-    private const PUBLIC_ACL = 'public-read';
-    private const PRIVATE_ACL = 'private';
+    private const string PUBLIC_GRANTEE_URI = 'http://acs.amazonaws.com/groups/global/AllUsers';
+    private const string PUBLIC_GRANTS_PERMISSION = 'READ';
+    private const string PUBLIC_ACL = 'public-read';
+    private const string PRIVATE_ACL = 'private';
 
     public function __construct(private readonly Visibility $defaultForDirectories = Visibility::Public)
     {

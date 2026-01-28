@@ -39,11 +39,11 @@ final class StreamStatCommand
         }
     }
 
-    private const STATS_ZERO = [0, 'dev', 1, 'ino', 3, 'nlink', 6, 'rdev'];
-    private const STATS_MODE = [2, 'mode'];
-    private const STATS_SIZE = [7, 'size'];
-    private const STATS_TIME = [8, 'atime', 9, 'mtime', 10, 'ctime'];
-    private const STATS_MINUS_ONE = [11, 'blksize', 12, 'blocks'];
+    private const array STATS_ZERO = [0, 'dev', 1, 'ino', 3, 'nlink', 6, 'rdev'];
+    private const array STATS_MODE = [2, 'mode'];
+    private const array STATS_SIZE = [7, 'size'];
+    private const array STATS_TIME = [8, 'atime', 9, 'mtime', 10, 'ctime'];
+    private const array STATS_MINUS_ONE = [11, 'blksize', 12, 'blocks'];
 
     /**
      * @return array<int|string,int|string>|false

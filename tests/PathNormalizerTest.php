@@ -4,13 +4,12 @@ namespace Tests;
 
 use Kcs\Filesystem\Exception\InvalidPathException;
 use Kcs\Filesystem\PathNormalizer;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class PathNormalizerTest extends TestCase
 {
-    /**
-     * @dataProvider providePaths
-     */
+    #[DataProvider('providePaths')]
     public function testPathNormalizing(string $input, string $expected): void
     {
         $result = PathNormalizer::normalizePath($input);
@@ -20,7 +19,7 @@ class PathNormalizerTest extends TestCase
         self::assertEquals($expected, $double);
     }
 
-    public function providePaths(): iterable
+    public static function providePaths(): iterable
     {
         yield ['.', ''];
         yield ['/path/to/dir/.', 'path/to/dir'];
@@ -44,9 +43,7 @@ class PathNormalizerTest extends TestCase
         yield ["some\0/path.txt", 'some/path.txt'];
     }
 
-    /**
-     * @dataProvider provideInvalidPath
-     */
+    #[DataProvider('provideInvalidPath')]
     public function testShouldThrowTryingToTraversePath(string $input): void
     {
         $this->expectException(InvalidPathException::class);
@@ -56,7 +53,7 @@ class PathNormalizerTest extends TestCase
         PathNormalizer::normalizePath($input);
     }
 
-    public function provideInvalidPath(): iterable
+    public static function provideInvalidPath(): iterable
     {
         yield ['something/../../../hehe'];
         yield ['/something/../../..'];

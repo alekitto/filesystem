@@ -3,6 +3,7 @@
 namespace Tests\Runtime;
 
 use Kcs\Filesystem\Runtime\SystemRuntime;
+use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
 
 class SystemRuntimeTest extends TestCase
@@ -53,9 +54,7 @@ class SystemRuntimeTest extends TestCase
         self::assertDirectoryExists(__DIR__.'/../../data/test_dir');
     }
 
-    /**
-     * @depends testMkdir
-     */
+    #[Depends('testMkdir')]
     public function testRmdir(): void
     {
         self::assertDirectoryExists(__DIR__.'/../../data/test_dir');
