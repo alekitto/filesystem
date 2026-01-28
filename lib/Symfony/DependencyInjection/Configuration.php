@@ -30,6 +30,13 @@ class Configuration implements ConfigurationInterface
                         ->end()
                         ->validate()
                             ->ifTrue(static function (array $value): bool {
+                                return ($value['type'] ?? null) === 'gcs'
+                                    && ($value['options']['bucket'] ?? null) === null;
+                            })
+                            ->thenInvalid('"bucket" options is required if filesystem type is gcs')
+                        ->end()
+                        ->validate()
+                            ->ifTrue(static function (array $value): bool {
                                 return ($value['type'] ?? null) === 'local'
                                     && ($value['options']['path'] ?? null) === null;
                             })
@@ -47,14 +54,21 @@ class Configuration implements ConfigurationInterface
                                     ->scalarNode('file_permissions')->end()
                                     ->scalarNode('dir_permissions')->end()
 
-                                    // S3
+                                    // Object storage
                                     ->scalarNode('prefix')->end()
                                     ->scalarNode('bucket')->end()
+
+                                    // S3
                                     ->scalarNode('region')->end()
                                     ->scalarNode('access_key')->end()
                                     ->scalarNode('secret_key')->end()
                                     ->scalarNode('endpoint')->end()
                                     ->scalarNode('client')->end()
+
+                                    // GCS
+                                    ->scalarNode('project_id')->end()
+                                    ->scalarNode('key_file_path')->end()
+                                    ->scalarNode('api_endpoint')->end()
                                 ->end()
                             ->end()
                         ->end()

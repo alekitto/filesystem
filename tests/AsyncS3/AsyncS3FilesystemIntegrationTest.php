@@ -12,6 +12,7 @@ use Kcs\Filesystem\Exception\OperationException;
 use Kcs\Stream\ResourceStream;
 use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -81,9 +82,11 @@ class AsyncS3FilesystemIntegrationTest extends TestCase
                 unset($exception);
                 try {
                     $httpClient->request('GET', 'http://localhost:'.$port.'/minio/health/live');
-                } catch (Throwable $exception) {
+                } catch (TransportExceptionInterface $exception) {
                     sleep(1);
                     continue;
+                } catch (Throwable $exception) {
+                    self::markTestSkipped('Cannot check minio server status: ' . $exception->getMessage());
                 }
 
                 unset($exception);
@@ -91,7 +94,7 @@ class AsyncS3FilesystemIntegrationTest extends TestCase
             }
 
             if (isset($exception)) {
-                throw $exception;
+                self::markTestSkipped('Cannot start minio server: ' . $exception->getMessage());
             }
 
             $s3Endpoint = 'http://localhost:'.$port;

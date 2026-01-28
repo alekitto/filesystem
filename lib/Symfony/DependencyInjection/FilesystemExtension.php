@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Kcs\Filesystem\Symfony\DependencyInjection;
 
 use AsyncAws\S3\S3Client;
+use Google\Cloud\Storage\StorageClient;
 use Kcs\Filesystem\AsyncS3\AsyncS3Filesystem;
 use Kcs\Filesystem\Filesystem;
+use Kcs\Filesystem\GCS\GCSFilesystem;
 use Kcs\Filesystem\Local\LocalFilesystem;
 use Kcs\Filesystem\Symfony\StreamWrapperRegisterer;
 use RuntimeException;
@@ -104,6 +106,38 @@ class FilesystemExtension extends Extension
                 }
 
                 return new Definition(LocalFilesystem::class, $arguments);
+
+            case 'gcs':
+                if (! class_exists(StorageClient::class)) {
+                    throw new RuntimeException('Google Cloud Storage client is needed to use gcs filesystem. Try run composer require google/cloud-storage');
+                }
+
+                if (isset($options['client'])) {
+                    if (! is_string($options['client'])) {
+                        throw new InvalidConfigurationException('GCS client must be a string service name in filesystem configuration.');
+                    }
+
+                    $client = new Reference($options['client']);
+                } else {
+                    $configuration = [];
+                    if (isset($options['project_id'])) {
+                        $configuration['projectId'] = $options['project_id'];
+                    }
+
+                    if (isset($options['key_file_path'])) {
+                        $configuration['keyFilePath'] = $options['key_file_path'];
+                    }
+
+                    if (isset($options['api_endpoint'])) {
+                        $configuration['apiEndpoint'] = $options['api_endpoint'];
+                    }
+
+                    if (! empty($configuration)) {
+                        $client = new Definition(StorageClient::class, [$configuration]);
+                    }
+                }
+
+                return new Definition(GCSFilesystem::class, [$options['bucket'], $options['prefix'] ?? '/', $client ?? null]);
 
             default:
                 return null;
