@@ -69,4 +69,16 @@ class GCSFileStatTest extends TestCase
         self::assertSame(-1, $stat->fileSize());
         self::assertSame(0, $stat->lastModified()->getTimestamp());
     }
+
+    public function testUsesUpdatedTimestampWhenPresent(): void
+    {
+        $object = $this->prophesize(StorageObject::class);
+        $object->info()->willReturn([
+            'updated' => '2021-01-01T00:00:00Z',
+        ]);
+
+        $stat = new GCSFileStat($object->reveal(), 'file.txt', 'file.txt');
+
+        self::assertSame(1609459200, $stat->lastModified()->getTimestamp());
+    }
 }

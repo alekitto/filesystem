@@ -44,6 +44,7 @@ class FilesystemExtensionTest extends TestCase
         $clientDefinition = $definition->getArgument(2);
         self::assertInstanceOf(Definition::class, $clientDefinition);
         self::assertSame(StorageClient::class, $clientDefinition->getClass());
+        self::assertSame([['projectId' => 'my-project']], $clientDefinition->getArguments());
     }
 
     public function testRegistersGcsFilesystemWithClientService(): void
@@ -73,6 +74,61 @@ class FilesystemExtensionTest extends TestCase
         self::assertFalse($definition->isPublic());
     }
 
+    public function testRegistersLocalFilesystemWithPath(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new FilesystemExtension();
+
+        $extension->load([
+            [
+                'storages' => [
+                    'local_storage' => [
+                        'type' => 'local',
+                        'options' => [
+                            'path' => '/tmp',
+                        ],
+                    ],
+                ],
+            ],
+        ], $container);
+
+        $definition = $container->getDefinition('kcs_filesystem.filesystem.local_storage');
+        self::assertSame('/tmp', $definition->getArgument(0));
+    }
+
+    public function testRegistersAliasForArgument(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new FilesystemExtension();
+
+        $extension->load([
+            [
+                'storages' => [
+                    'local_storage' => [
+                        'type' => 'local',
+                        'options' => [
+                            'path' => '/tmp',
+                        ],
+                    ],
+                ],
+            ],
+        ], $container);
+
+        $found = false;
+        foreach ($container->getAliases() as $id => $alias) {
+            if (! str_starts_with($id, 'Kcs\\Filesystem\\Filesystem $')) {
+                continue;
+            }
+
+            if ((string) $alias === 'kcs_filesystem.filesystem.local_storage') {
+                $found = true;
+                break;
+            }
+        }
+
+        self::assertTrue($found);
+    }
+
     public function testRegistersStreamWrapperRegisterer(): void
     {
         $container = new ContainerBuilder();
@@ -97,6 +153,37 @@ class FilesystemExtensionTest extends TestCase
         self::assertTrue($registerer->isPublic());
         self::assertEquals([
             'localfs' => new Reference('kcs_filesystem.filesystem.local_storage'),
+        ], $registerer->getArgument(0));
+    }
+
+    public function testStreamWrapperSkipsOnlyEmptyProtocols(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new FilesystemExtension();
+
+        $extension->load([
+            [
+                'storages' => [
+                    'first' => [
+                        'type' => 'local',
+                        'options' => [
+                            'path' => '/tmp',
+                        ],
+                    ],
+                    'second' => [
+                        'type' => 'local',
+                        'stream_wrapper_protocol' => 'localfs2',
+                        'options' => [
+                            'path' => '/tmp',
+                        ],
+                    ],
+                ],
+            ],
+        ], $container);
+
+        $registerer = $container->getDefinition('kcs_filesystem.stream_wrapper_registerer');
+        self::assertEquals([
+            'localfs2' => new Reference('kcs_filesystem.filesystem.second'),
         ], $registerer->getArgument(0));
     }
 }

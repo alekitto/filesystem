@@ -93,6 +93,23 @@ class AsyncS3FilesystemTest extends TestCase
         self::assertTrue($fs->exists('file.txt'));
     }
 
+    public function testExistsShouldTrimRootPrefixOnSlashLocation(): void
+    {
+        $client = $this->prophesize(S3Client::class);
+        $fs = new AsyncS3Filesystem('bucket', 'root', $client->reveal());
+
+        $response = $this->prophesize(ResponseInterface::class);
+        $response->getStatusCode()->willReturn(200);
+        $success = new ObjectExistsWaiter(new Response($response->reveal(), $this->prophesize(HttpClientInterface::class)->reveal(), new NullLogger()), $client->reveal(), null);
+
+        $client->objectExists([
+            'Bucket' => 'bucket',
+            'Key' => 'root'
+        ])->willReturn($success)->shouldBeCalled();
+
+        self::assertTrue($fs->exists('/'));
+    }
+
     public function testReadShouldThrowIfRequestingToReadADirectory(): void
     {
         $this->expectException(OperationException::class);

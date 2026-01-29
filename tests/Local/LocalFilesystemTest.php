@@ -773,4 +773,147 @@ class LocalFilesystemTest extends TestCase
             ],
         ]);
     }
+
+    public function testWriteShouldUseCustomDefaultFilePermissions(): void
+    {
+        $this->runtime->isDir('/')->willReturn(true);
+        $this->fs = new LocalFilesystem('/', ['file_permissions' => 0600], $this->runtime->reveal());
+
+        $handle = fopen('php://temp', 'rb+');
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->fopen('/file', 'xb')->willReturn($handle);
+        $this->runtime->chmod('/file', 0600)->shouldBeCalled();
+        $this->runtime->fclose($handle)->shouldBeCalled();
+
+        $this->fs->write('file', 'content');
+    }
+
+    public function testWriteShouldUseLocalDirPermissions(): void
+    {
+        $handle = fopen('php://temp', 'rb+');
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->mkdir('/', 0700, true)->willReturn(true)->shouldBeCalled();
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->fopen('/file', 'xb')->willReturn($handle);
+        $this->runtime->chmod('/file', 0644)->shouldBeCalled();
+        $this->runtime->fclose($handle)->shouldBeCalled();
+
+        $this->fs->write('file', 'content', [
+            'local' => [
+                'dir_permissions' => 0700,
+            ],
+        ]);
+    }
+
+    public function testWriteUsesFixedChunkSize(): void
+    {
+        $handle = fopen('php://temp', 'rb+');
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->mkdir('/', 0755, true)->willReturn(true);
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->fopen('/file', 'xb')->willReturn($handle);
+        $this->runtime->chmod('/file', 0644)->shouldBeCalled();
+        $this->runtime->fclose($handle)->shouldBeCalled();
+
+        $stream = new class () implements \Kcs\Stream\ReadableStream {
+            public int $lastReadLength = 0;
+            private bool $eof = false;
+
+            public function eof(): bool
+            {
+                return $this->eof;
+            }
+
+            public function close(): void
+            {
+                $this->eof = true;
+            }
+
+            public function length(): ?int
+            {
+                return 4;
+            }
+
+            public function read(int $length): string
+            {
+                $this->lastReadLength = $length;
+                $this->eof = true;
+
+                return 'data';
+            }
+
+            public function pipe(\Kcs\Stream\WritableStream $destination): void
+            {
+                $destination->write($this->read(4));
+            }
+
+            public function peek(int $length): string
+            {
+                return '';
+            }
+
+            public function tell(): int|false
+            {
+                return false;
+            }
+
+            public function seek(int $position, int $whence = SEEK_SET): bool
+            {
+                return false;
+            }
+
+            public function rewind(): void
+            {
+            }
+
+            public function isReadable(): bool
+            {
+                return true;
+            }
+        };
+
+        $this->fs->write('file', $stream);
+        self::assertSame(512, $stream->lastReadLength);
+    }
+
+    public function testDeleteCallsClearLastError(): void
+    {
+        $this->runtime->isFile('/file')->willReturn(true);
+        $this->runtime->isLink('/file')->willReturn(false);
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->unlink('/file')->willReturn(true);
+
+        $this->fs->delete('file');
+    }
+
+    public function testCreateDirectoryCallsClearLastError(): void
+    {
+        $this->runtime->isDir('/folder')->willReturn(false);
+        $this->runtime->clearLastError()->shouldBeCalled();
+        $this->runtime->mkdir('/folder', 0755, true)->willReturn(true);
+
+        $this->fs->createDirectory('folder');
+    }
+
+    public function testDeleteDirectoryCallsClearLastError(): void
+    {
+        $dir = sys_get_temp_dir() . '/kcs_fs_delete_' . uniqid();
+        mkdir($dir);
+        file_put_contents($dir . '/file.txt', 'data');
+
+        $this->runtime->isDir($dir)->willReturn(true);
+        $this->runtime->clearLastError()->shouldBeCalledTimes(2);
+        $this->runtime->unlink($dir . '/file.txt')->willReturn(true);
+        $this->runtime->rmdir($dir)->willReturn(true);
+
+        $fs = new LocalFilesystem($dir, [], $this->runtime->reveal());
+        $fs->deleteDirectory('');
+
+        @unlink($dir . '/file.txt');
+        if (is_dir($dir)) {
+            rmdir($dir);
+        }
+    }
 }
