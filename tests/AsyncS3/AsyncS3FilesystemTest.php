@@ -9,7 +9,9 @@ use AsyncAws\Core\Exception\Http\ClientException;
 use AsyncAws\Core\Response;
 use AsyncAws\S3\Exception\InvalidObjectStateException;
 use AsyncAws\S3\Exception\NoSuchKeyException;
+use AsyncAws\S3\Input\ListObjectsV2Request;
 use AsyncAws\S3\Result\CreateMultipartUploadOutput;
+use AsyncAws\S3\Result\GetObjectAclOutput;
 use AsyncAws\S3\Result\GetObjectOutput;
 use AsyncAws\S3\Result\HeadObjectOutput;
 use AsyncAws\S3\Result\ListObjectsV2Output;
@@ -24,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Prophecy\Prophecy\ObjectProphecy;
 use Psr\Log\NullLogger;
+use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
@@ -71,6 +74,23 @@ class AsyncS3FilesystemTest extends TestCase
 
         self::assertTrue($this->fs->exists('existent.txt'));
         self::assertFalse($this->fs->exists('non-existent.txt'));
+    }
+
+    public function testExistsShouldUsePrefix(): void
+    {
+        $client = $this->prophesize(S3Client::class);
+        $fs = new AsyncS3Filesystem('bucket', 'root', $client->reveal());
+
+        $response = $this->prophesize(ResponseInterface::class);
+        $response->getStatusCode()->willReturn(200);
+        $success = new ObjectExistsWaiter(new Response($response->reveal(), $this->prophesize(HttpClientInterface::class)->reveal(), new NullLogger()), $client->reveal(), null);
+
+        $client->objectExists([
+            'Bucket' => 'bucket',
+            'Key' => 'root/file.txt'
+        ])->willReturn($success)->shouldBeCalled();
+
+        self::assertTrue($fs->exists('file.txt'));
     }
 
     public function testReadShouldThrowIfRequestingToReadADirectory(): void
@@ -237,6 +257,74 @@ XML;
         $this->fs->list('/', true);
     }
 
+    public function testListShouldPassBucketToAcl(): void
+    {
+        $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult>
+  <Contents>
+    <Key>file.txt</Key>
+    <LastModified>2020-01-01T00:00:00.000Z</LastModified>
+    <ETag>"etag"</ETag>
+    <Size>3</Size>
+    <StorageClass>STANDARD</StorageClass>
+  </Contents>
+</ListBucketResult>
+XML;
+
+        $awsResponse = new Response(
+            new \AsyncAws\Core\Test\Http\SimpleMockedResponse($xml),
+            new MockHttpClient(),
+            new NullLogger()
+        );
+
+        $output = new ListObjectsV2Output(
+            $awsResponse,
+            $this->client->reveal(),
+            new ListObjectsV2Request(['Bucket' => 'bucket', 'Prefix' => ''])
+        );
+        $this->client->listObjectsV2([
+            'Bucket' => 'bucket',
+            'Prefix' => '',
+        ])
+            ->shouldBeCalled()
+            ->willReturn($output);
+
+        $aclOutput = new GetObjectAclOutput(new Response(
+            new \AsyncAws\Core\Test\Http\SimpleMockedResponse(<<<'EOT'
+<?xml version="1.0" encoding="UTF-8"?>
+<AccessControlPolicy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <Owner>
+      <DisplayName>Foobar</DisplayName>
+      <ID>0123456789</ID>
+   </Owner>
+   <AccessControlList>
+      <Grant>
+         <Grantee>
+            <ID>0123456789</ID>
+            <xsi:type>string</xsi:type>
+            <URI>http://acs.amazonaws.com/groups/global/AllUsers</URI>
+         </Grantee>
+         <Permission>READ</Permission>
+      </Grant>
+   </AccessControlList>
+</AccessControlPolicy>
+EOT),
+            new MockHttpClient(),
+            new NullLogger()
+        ));
+
+        $this->client->getObjectAcl([
+            'Bucket' => 'bucket',
+            'Key' => 'file.txt',
+        ])->shouldBeCalled()->willReturn($aclOutput);
+
+        $collection = $this->fs->list('/', true);
+        $item = $collection->first();
+        self::assertInstanceOf(\Kcs\Filesystem\AsyncS3\S3FileStat::class, $item);
+        self::assertSame('public', $item->visibility()->value);
+    }
+
     public function testStatShouldThrowIfFileDoesNotExist(): void
     {
         $content = <<<XML
@@ -293,6 +381,53 @@ XML;
         $this->fs->stat('this-file');
     }
 
+    public function testStatShouldPassBucketToAcl(): void
+    {
+        $response = MockResponse::fromRequest('HEAD', 'http://localhost', [], new MockResponse('', ['http_code' => 200]));
+        $awsResponse = new Response(
+            $response,
+            $this->prophesize(HttpClientInterface::class)->reveal(),
+            new NullLogger()
+        );
+
+        $this->client->headObject([
+            'Bucket' => 'bucket',
+            'Key' => 'file.txt'
+        ])->willReturn(new HeadObjectOutput($awsResponse))->shouldBeCalled();
+
+        $aclOutput = new GetObjectAclOutput(new Response(
+            new \AsyncAws\Core\Test\Http\SimpleMockedResponse(<<<'EOT'
+<?xml version="1.0" encoding="UTF-8"?>
+<AccessControlPolicy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <Owner>
+      <DisplayName>Foobar</DisplayName>
+      <ID>0123456789</ID>
+   </Owner>
+   <AccessControlList>
+      <Grant>
+         <Grantee>
+            <ID>0123456789</ID>
+            <xsi:type>string</xsi:type>
+            <URI>http://acs.amazonaws.com/groups/global/AllUsers</URI>
+         </Grantee>
+         <Permission>READ</Permission>
+      </Grant>
+   </AccessControlList>
+</AccessControlPolicy>
+EOT),
+            new MockHttpClient(),
+            new NullLogger()
+        ));
+
+        $this->client->getObjectAcl([
+            'Bucket' => 'bucket',
+            'Key' => 'file.txt',
+        ])->shouldBeCalled()->willReturn($aclOutput);
+
+        $stat = $this->fs->stat('file.txt');
+        self::assertSame('public', $stat->visibility()->value);
+    }
+
     public function testWriteShouldUsePutObjectForSmallUploads(): void
     {
         $contents = str_repeat('a', 5 * 1024 * 1024);
@@ -319,6 +454,27 @@ XML;
                 'metadata' => [
                     'my-info' => 'test',
                 ],
+            ],
+        ]);
+    }
+
+    public function testWriteShouldPreferTopLevelContentType(): void
+    {
+        $contents = str_repeat('a', 5 * 1024 * 1024);
+        $this->client->putObject([
+            'Bucket' => 'bucket',
+            'Key' => 'test.txt',
+            'Body' => $contents,
+            'ContentLength' => 5 * 1024 * 1024,
+            'ContentMD5' => base64_encode(hash('md5', $contents, true)),
+            'ContentType' => 'text/plain',
+        ])
+            ->shouldBeCalled();
+
+        $this->fs->write('test.txt', $contents, [
+            'content-type' => 'text/plain',
+            's3' => [
+                'content-type' => 'application/json',
             ],
         ]);
     }

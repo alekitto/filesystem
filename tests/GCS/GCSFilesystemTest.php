@@ -59,6 +59,20 @@ class GCSFilesystemTest extends TestCase
         self::assertFalse($this->fs->exists('missing.txt'));
     }
 
+    public function testExistsShouldUsePrefix(): void
+    {
+        $client = $this->prophesize(StorageClient::class);
+        $bucket = $this->prophesize(Bucket::class);
+        $client->bucket('bucket')->willReturn($bucket->reveal());
+
+        $object = $this->prophesize(StorageObject::class);
+        $object->exists()->willReturn(true);
+        $bucket->object('root/file.txt')->willReturn($object->reveal())->shouldBeCalled();
+
+        $fs = new GCSFilesystem('bucket', 'root', $client->reveal());
+        self::assertTrue($fs->exists('file.txt'));
+    }
+
     public function testReadShouldThrowIfRequestingToReadADirectory(): void
     {
         $this->expectException(OperationException::class);
@@ -159,6 +173,31 @@ class GCSFilesystemTest extends TestCase
             'gcs' => [
                 'predefined-acl' => 'publicRead',
                 'metadata' => ['foo' => 'bar'],
+            ],
+        ]);
+    }
+
+    public function testWriteShouldPreferTopLevelContentType(): void
+    {
+        $this->bucket
+            ->upload(
+                Argument::type('resource'),
+                Argument::that(static function (array $options): bool {
+                    if (($options['name'] ?? null) !== 'path.txt') {
+                        return false;
+                    }
+
+                    $metadata = $options['metadata'] ?? [];
+
+                    return ($metadata['contentType'] ?? null) === 'text/plain';
+                })
+            )
+            ->shouldBeCalled();
+
+        $this->fs->write('path.txt', 'HELLO', [
+            'content-type' => 'text/plain',
+            'gcs' => [
+                'content-type' => 'application/json',
             ],
         ]);
     }

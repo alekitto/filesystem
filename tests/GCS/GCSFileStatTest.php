@@ -58,4 +58,15 @@ class GCSFileStatTest extends TestCase
 
         self::assertSame(Visibility::Private, $stat->visibility());
     }
+
+    public function testDefaultsForMissingInfo(): void
+    {
+        $object = $this->prophesize(StorageObject::class);
+        $object->info()->willReturn([]);
+
+        $stat = new GCSFileStat($object->reveal(), 'file.txt', 'file.txt');
+
+        self::assertSame(-1, $stat->fileSize());
+        self::assertSame(0, $stat->lastModified()->getTimestamp());
+    }
 }
