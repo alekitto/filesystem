@@ -132,12 +132,10 @@ class FilesystemExtension extends Extension
                         $configuration['apiEndpoint'] = $options['api_endpoint'];
                     }
 
-                    if (! empty($configuration)) {
-                        $client = new Definition(StorageClient::class, [$configuration]);
-                    }
+                    $client = new Definition(StorageClient::class, [$configuration]);
                 }
 
-                return new Definition(GCSFilesystem::class, [$options['bucket'], $options['prefix'] ?? '/', $client ?? null]);
+                return new Definition(GCSFilesystem::class, [$options['bucket'], $options['prefix'] ?? '/', $client]);
 
             default:
                 return null;

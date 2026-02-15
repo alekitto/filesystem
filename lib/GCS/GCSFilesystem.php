@@ -18,7 +18,6 @@ use Throwable;
 
 use function array_merge;
 use function assert;
-use function fclose;
 use function fopen;
 use function fwrite;
 use function is_string;
@@ -160,8 +159,6 @@ class GCSFilesystem implements Filesystem
                 ->upload($resource, $options);
         } catch (Throwable $e) {
             throw new OperationException('Failed to write file', $e);
-        } finally {
-            fclose($resource);
         }
     }
 
